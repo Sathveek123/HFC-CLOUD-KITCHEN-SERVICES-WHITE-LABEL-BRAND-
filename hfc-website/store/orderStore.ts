@@ -56,6 +56,10 @@ interface OrderStore {
   orders: OrderRecord[]
   _hasHydrated: boolean
   addOrder: (order: Omit<OrderRecord, 'timestamp' | 'updatedAt' | 'seenByAdmin'> & Partial<Pick<OrderRecord, 'timestamp' | 'updatedAt' | 'seenByAdmin'>>) => void
+  /** Bulk-merge orders from DB fetch — upserts by ID, never creates duplicates */
+  upsertOrders: (incoming: OrderRecord[]) => void
+  /** Single-order upsert for realtime subscription callbacks — updates if newer, inserts if new */
+  upsertOrder: (order: OrderRecord) => void
   updateOrderStatus: (id: string, status: OrderStatus) => void
   updatePaymentStatus: (id: string, paymentStatus: PaymentStatus) => void
   updatePaymentMethod: (id: string, method: OrderRecord['paymentMethod']) => void
@@ -122,6 +126,36 @@ export const useOrderStore = create<OrderStore>()(
           useBillsStore.getState().createBill(order)
         } catch (e) {
           console.error('Failed to auto-create bill on order placement:', e)
+        }
+      },
+
+      // Bulk upsert: replace existing orders by ID, insert new ones — never duplicates
+      upsertOrders: (incoming) => {
+        const existing = get().orders
+        const existingMap = new Map(existing.map(o => [o.id, o]))
+        incoming.forEach(o => existingMap.set(o.id, o))
+        const merged = Array.from(existingMap.values())
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        set({ orders: merged })
+      },
+
+      // Single upsert for realtime subscription: update if newer, insert if not present
+      upsertOrder: (incoming) => {
+        const existing = get().orders
+        const idx = existing.findIndex(o => o.id === incoming.id)
+        if (idx === -1) {
+          // New order — prepend
+          set({ orders: [incoming, ...existing] })
+        } else {
+          // Update only if incoming is newer
+          const current = existing[idx]
+          const incomingTs = incoming.timestamp ?? new Date(incoming.updatedAt).getTime()
+          const currentTs = current.timestamp ?? new Date(current.updatedAt).getTime()
+          if (incomingTs >= currentTs) {
+            const updated = [...existing]
+            updated[idx] = incoming
+            set({ orders: updated })
+          }
         }
       },
 

@@ -16,20 +16,22 @@ export default function AgentOrdersPage() {
   const orders = useOrderStore(state => state.orders)
   const updateOrderStatus = useOrderStore(state => state.updateOrderStatus)
   const updatePaymentStatus = useOrderStore(state => state.updatePaymentStatus)
-  const addOrder = useOrderStore(state => state.addOrder)
+  const upsertOrders = useOrderStore(state => state.upsertOrders)
+  const upsertOrder = useOrderStore(state => state.upsertOrder)
 
-  // Realtime Supabase sync across devices for delivery riders
+  // Realtime Supabase sync — runs ONCE on mount only
   React.useEffect(() => {
     fetchOrdersFromSupabase().then(fetched => {
-      fetched.forEach(o => addOrder(o))
+      upsertOrders(fetched)
     })
 
     const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
-      addOrder(updatedOrder)
+      upsertOrder(updatedOrder)
     })
 
     return () => unsubscribe()
-  }, [addOrder])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Status Filter Tabs
   const [activeTab, setActiveTab] = useState<'new' | 'out' | 'delivered' | 'all'>('new')

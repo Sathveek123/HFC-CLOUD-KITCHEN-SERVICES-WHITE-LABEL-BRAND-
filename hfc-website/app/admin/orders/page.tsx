@@ -11,22 +11,24 @@ import OrdersTable from '@/components/admin/orders/OrdersTable'
 export default function AdminOrdersListPage() {
   const orders = useOrderStore(state => state.orders)
   const markSeenByAdmin = useOrderStore(state => state.markSeenByAdmin)
-  const addOrder = useOrderStore(state => state.addOrder)
+  const upsertOrders = useOrderStore(state => state.upsertOrders)
+  const upsertOrder = useOrderStore(state => state.upsertOrder)
 
-  // Realtime Supabase sync across devices
+  // Realtime Supabase sync across devices — runs ONCE on mount only
   useEffect(() => {
-    // 1. Initial fetch from Supabase
+    // 1. Initial fetch: bulk-upsert by ID (zero duplicates)
     fetchOrdersFromSupabase().then(fetched => {
-      fetched.forEach(o => addOrder(o))
+      upsertOrders(fetched)
     })
 
-    // 2. Realtime subscription
+    // 2. Realtime subscription: single-upsert (insert new, update existing if newer)
     const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
-      addOrder(updatedOrder)
+      upsertOrder(updatedOrder)
     })
 
     return () => unsubscribe()
-  }, [addOrder])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Filters State
   const [activeTab, setActiveTab] = useState('active')
