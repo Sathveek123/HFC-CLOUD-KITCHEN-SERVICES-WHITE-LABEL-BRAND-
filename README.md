@@ -52,16 +52,20 @@ All database operations are governed by **Strict Row Level Security (RLS)** in P
 ## 🛠️ Installation & Local Setup
 
 ```bash
-# 1. Install dependencies
+# 1. Clone the repository
+git clone https://github.com/Sathveek123/HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-.git
+cd HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-/hfc-website
+
+# 2. Install dependencies
 npm install
 
-# 2. Configure environment variables (.env.local)
+# 3. Configure environment variables (.env.local)
 cp .env.example .env.local
 
-# 3. Start Next.js development server
+# 4. Start Next.js development server
 npm run dev
 
-# 4. Build for production compilation check
+# 5. Build for production compilation check
 npm run build
 ```
 

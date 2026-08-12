@@ -50,3 +50,13 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Touch target & mobile viewport optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
+}
