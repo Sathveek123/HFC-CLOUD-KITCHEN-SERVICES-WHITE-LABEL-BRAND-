@@ -1,0 +1,23 @@
+# node_modules & build output
+node_modules/
+hfc-website/node_modules/
+.next/
+hfc-website/.next/
+out/
+hfc-website/out/
+build/
+hfc-website/build/
+
+# environment variables
+.env
+.env.local
+.env*.local
+hfc-website/.env
+hfc-website/.env.local
+
+# IDE & OS
+.DS_Store
+*.log
+.kilo/
+.kilocode/
+.gemini/

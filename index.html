@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HFC Consultancy Services | Premium Food & F&B Consultancy</title>
+  <meta name="description" content="HFC Consultancy Services — Your Growth, Our Responsibility. All Within Your Budget. Menu engineering, brand positioning, and full F&B setup.">
+  
+  <!-- Google Fonts CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@1,400;1,600&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & CSS VARIABLES
+       ========================================================================== */
+    :root {
+      --primary-red: #CC0000;
+      --accent-red: #E8000E;
+      --hover-red: #A30000;
+      --text-black: #1A1A1A;
+      --secondary-text: #4A4A4A;
+      --muted-text: #6A6A6A;
+      --bg-white: #FFFFFF;
+      --surface-white: #FAFAFA;
+      --divider: #F0F0F0;
+      --gold-star: #C9973A;
+      --whatsapp-green: #25D366;
+      --whatsapp-hover: #1EBE5D;
+
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-brand: 'Montserrat', sans-serif;
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-tagline: 'Lora', Georgia, serif;
+
+      --max-width: 1280px;
+      --border-radius-card: 12px;
+      --border-radius-btn: 6px;
+      --border-radius-pill: 50px;
+      --box-shadow-subtle: 0 2px 16px rgba(0, 0, 0, 0.08);
+      --box-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.10);
+      --transition-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* CSS Reset */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-white);
+      color: var(--text-black);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* Typography Defaults */
+    h1, h2, h3, h4 {
+      color: var(--text-black);
+      font-weight: 700;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      outline: none;
+    }
+
+    /* Container Utility */
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ==========================================================================
+       SECTION 1: SPLASH SCREEN
+       ========================================================================== */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-white);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.7s cubic-bezier(0.76, 0, 0.24, 1);
+    }
+
+    #splash-screen.exit {
+      transform: translateY(-100vh);
+    }
+
+    .splash-logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: splashScaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes splashScaleIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .splash-circle-badge {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      border: 4px solid var(--primary-red);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-shadow: 0 4px 30px rgba(204, 0, 0, 0.12);
+      background: var(--bg-white);
+    }
+
+    .splash-circle-badge::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border-radius: 50%;
+      border: 2px dashed rgba(26, 26, 26, 0.2);
+    }
+
+    .splash-cloche-icon {
+      font-size: 32px;
+      margin-bottom: 4px;
+      color: var(--primary-red);
+    }
+
+    .splash-hfc-text {
+      font-family: var(--font-brand);
+      font-weight: 900;
+      font-size: 80px;
+      color: var(--primary-red);
+      line-height: 0.9;
+      letter-spacing: -2px;
+    }
+
+    .splash-sub-text {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 11px;
+      color: var(--text-black);
+      letter-spacing: 4px;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    .splash-stars {
+      color: var(--gold-star);
+      font-size: 14px;
+      margin-top: 8px;
+      letter-spacing: 3px;
+    }
+
+    .splash-tagline {
+      font-family: var(--font-tagline);
+      font-style: italic;
+      font-size: 18px;
+      color: var(--secondary-text);
+      margin-top: 28px;
+      opacity: 0;
+      animation: fadeIn 0.6s ease-out 0.4s forwards;
+      text-align: center;
+      max-width: 90%;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* ==========================================================================
+       NAVIGATION BAR
+       ========================================================================== */
+    .navbar-sticky-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background-color: var(--bg-white);
+      border-bottom: 1px solid var(--divider);
+      transition: var(--transition-smooth);
+    }
+
+    .navbar-sticky-wrapper.scrolled {
+      box-shadow: var(--box-shadow-subtle);
+    }
+
+    .navbar {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-logo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo-img {
+      height: 48px;
+      width: 48px;
+      object-fit: contain;
+      border-radius: 50%;
+      border: 1px solid var(--divider);
+    }
+
+    .brand-text-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title-hfc {
+      font-family: var(--font-brand);
+      font-weight: 900;
+      font-size: 24px;
+      color: var(--primary-red);
+      line-height: 1;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle-cs {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 9px;
+      color: var(--text-black);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-black);
+      position: relative;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0%;
+      height: 2px;
+      background-color: var(--primary-red);
+      transition: width 0.25s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--primary-red);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .cart-trigger-btn {
+      background-color: var(--primary-red);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: var(--border-radius-pill);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition-smooth);
+    }
+
+    .cart-trigger-btn:hover {
+      background-color: var(--hover-red);
+      transform: translateY(-1px);
+    }
+
+    .cart-count-badge {
+      background-color: var(--bg-white);
+      color: var(--primary-red);
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 11px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+
+    .cart-count-badge.bounce {
+      transform: scale(1.4);
+    }
+
+    .mobile-menu-toggle {
+      display: none;
+      font-size: 24px;
+      color: var(--text-black);
+      background: none;
+      border: none;
+    }
+
+    /* Mobile Overlay Menu */
+    .mobile-menu-overlay {
+      display: none;
+      position: fixed;
+      top: 72px;
+      left: 0;
+      width: 100%;
+      height: calc(100vh - 72px);
+      background: var(--bg-white);
+      z-index: 998;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 40px;
+    }
+
+    .mobile-menu-overlay.active {
+      display: flex;
+    }
+
+    .mobile-menu-overlay a {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--text-black);
+    }
+
+    /* ==========================================================================
+       SECTION 2: HERO SECTION
+       ========================================================================== */
+    .hero-section {
+      padding: 90px 0 100px;
+      background-color: var(--bg-white);
+      overflow: hidden;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 55% 45%;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .eyebrow-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--primary-red);
+      background-color: rgba(204, 0, 0, 0.05);
+      color: var(--primary-red);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 12px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+
+    .hero-headline {
+      font-family: var(--font-display);
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1.12;
+      color: var(--text-black);
+      margin-bottom: 20px;
+    }
+
+    .hero-headline .text-red {
+      color: var(--primary-red);
+    }
+
+    .hero-subheadline {
+      font-family: var(--font-tagline);
+      font-style: italic;
+      font-size: 20px;
+      color: var(--secondary-text);
+      line-height: 1.6;
+      margin-bottom: 36px;
+      max-width: 580px;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-red);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 16px 36px;
+      border-radius: var(--border-radius-btn);
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--hover-red);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(204, 0, 0, 0.25);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 2px solid var(--text-black);
+      color: var(--text-black);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 14px 34px;
+      border-radius: var(--border-radius-btn);
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-ghost:hover {
+      background-color: var(--text-black);
+      color: var(--bg-white);
+      transform: translateY(-2px);
+    }
+
+    .trust-metrics-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--divider);
+      padding-top: 32px;
+      margin-top: 10px;
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-number {
+      font-family: var(--font-brand);
+      font-weight: 900;
+      font-size: 32px;
+      color: var(--primary-red);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .metric-label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--secondary-text);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .metric-divider {
+      width: 1px;
+      height: 40px;
+      background-color: var(--divider);
+    }
+
+    /* Hero Right Column Visual */
+    .hero-right {
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    .hero-visual-circle {
+      width: 440px;
+      height: 440px;
+      border-radius: 50%;
+      border: 3px solid var(--divider);
+      background-color: var(--bg-white);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-visual-circle::before {
+      content: '';
+      position: absolute;
+      width: 490px;
+      height: 490px;
+      border-radius: 50%;
+      border: 2px dotted rgba(204, 0, 0, 0.15);
+      animation: spinSlow 40s linear infinite;
+    }
+
+    @keyframes spinSlow {
+      100% { transform: rotate(360deg); }
+    }
+
+    .hero-brand-badge {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 4px solid var(--primary-red);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-white);
+      box-shadow: var(--box-shadow-subtle);
+      z-index: 2;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .hero-logo-img {
+      width: 220px;
+      height: 220px;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+
+    /* Floating Social Proof Cards */
+    .floating-card {
+      position: absolute;
+      background: var(--bg-white);
+      border: 1px solid var(--divider);
+      border-radius: 10px;
+      padding: 12px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      z-index: 3;
+      font-family: var(--font-body);
+      animation: floatMotion 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatMotion {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-8px); }
+    }
+
+    .floating-card-1 {
+      top: 40px;
+      right: -10px;
+    }
+
+    .floating-card-2 {
+      bottom: 40px;
+      left: -10px;
+      animation-delay: 2s;
+    }
+
+    .floating-card-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-black);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .floating-card-subtitle {
+      font-size: 12px;
+      color: var(--secondary-text);
+      margin-top: 2px;
+    }
+
+    .star-rating {
+      color: var(--gold-star);
+    }
+
+    /* ==========================================================================
+       SECTION 3: MENU SYSTEM
+       ========================================================================== */
+    .menu-section {
+      padding: 80px 0 100px;
+      background-color: var(--bg-white);
+      border-top: 1px solid var(--divider);
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 48px;
+    }
+
+    .header-red-rule {
+      width: 60px;
+      height: 3px;
+      background-color: var(--primary-red);
+      margin: 0 auto 16px;
+    }
+
+    .eyebrow-menu {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--primary-red);
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 42px;
+      color: var(--text-black);
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      font-family: var(--font-body);
+      font-size: 18px;
+      color: var(--secondary-text);
+      line-height: 1.7;
+    }
+
+    /* Sticky Category Tab Bar */
+    .menu-tabs-wrapper {
+      position: sticky;
+      top: 72px;
+      z-index: 900;
+      background-color: var(--bg-white);
+      border-bottom: 1px solid var(--divider);
+      margin-bottom: 48px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+
+    .menu-tabs-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 0;
+      scrollbar-width: none; /* Firefox */
+    }
+
+    .menu-tabs-container::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
+    }
+
+    .category-tab {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--secondary-text);
+      padding: 12px 20px;
+      border-radius: var(--border-radius-btn);
+      border: 1px solid transparent;
+      white-space: nowrap;
+      transition: var(--transition-smooth);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-tab:hover {
+      color: var(--primary-red);
+      background-color: rgba(204, 0, 0, 0.03);
+    }
+
+    .category-tab.active {
+      color: var(--primary-red);
+      background-color: rgba(204, 0, 0, 0.05);
+      border-bottom: 3px solid var(--primary-red);
+      border-radius: var(--border-radius-btn) var(--border-radius-btn) 0 0;
+    }
+
+    /* Menu Cards Grid */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      transition: opacity 0.2s ease;
+    }
+
+    .menu-card {
+      background-color: var(--bg-white);
+      border: 1px solid var(--divider);
+      border-radius: var(--border-radius-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition-smooth);
+      position: relative;
+    }
+
+    .menu-card:hover {
+      box-shadow: var(--box-shadow-hover);
+      transform: translateY(-4px);
+    }
+
+    /* Card Top Image */
+    .card-image-wrapper {
+      width: 100%;
+      height: 220px;
+      position: relative;
+      overflow: hidden;
+      background-color: var(--surface-white);
+    }
+
+    .card-food-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .menu-card:hover .card-food-img {
+      transform: scale(1.05);
+    }
+
+    .card-badge-category {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background-color: var(--primary-red);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: var(--border-radius-pill);
+      z-index: 2;
+    }
+
+    .card-badge-bestseller {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background-color: var(--gold-star);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--border-radius-pill);
+      z-index: 2;
+    }
+
+    /* Card Middle Info */
+    .card-content {
+      padding: 20px 20px 0 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .card-food-name {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 17px;
+      color: var(--text-black);
+      line-height: 1.3;
+    }
+
+    .card-description {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--muted-text);
+      line-height: 1.6;
+      margin-bottom: 14px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-tags-row {
+      margin-top: auto;
+      margin-bottom: 16px;
+    }
+
+    .diet-tag {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .diet-tag.veg {
+      color: #2E7D32;
+      background-color: rgba(46, 125, 50, 0.08);
+      border: 1px solid rgba(46, 125, 50, 0.2);
+    }
+
+    .diet-tag.non-veg {
+      color: var(--primary-red);
+      background-color: rgba(204, 0, 0, 0.08);
+      border: 1px solid rgba(204, 0, 0, 0.2);
+    }
+
+    /* Card Bottom Footer */
+    .card-footer {
+      padding: 14px 20px 18px;
+      border-top: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-price {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--primary-red);
+    }
+
+    .btn-add-item {
+      background-color: var(--primary-red);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 9px 20px;
+      border-radius: var(--border-radius-btn);
+      transition: var(--transition-smooth);
+    }
+
+    .btn-add-item:hover {
+      background-color: var(--hover-red);
+      transform: scale(1.03);
+    }
+
+    .qty-stepper-inline {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--primary-red);
+      border-radius: var(--border-radius-btn);
+      overflow: hidden;
+      background: var(--bg-white);
+    }
+
+    .stepper-btn {
+      background-color: var(--primary-red);
+      color: var(--bg-white);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .stepper-btn:hover {
+      background-color: var(--hover-red);
+    }
+
+    .stepper-val {
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-black);
+      min-width: 34px;
+      text-align: center;
+    }
+
+    /* ==========================================================================
+       SECTION 4: CART DRAWER SYSTEM
+       ========================================================================== */
+    .cart-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    .cart-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .cart-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 420px;
+      max-width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-white);
+      z-index: 2001;
+      box-shadow: -4px 0 30px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.76, 0, 0.24, 1);
+    }
+
+    .cart-drawer.open {
+      transform: translateX(0);
+    }
+
+    .cart-drawer-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .cart-drawer-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--text-black);
+    }
+
+    .cart-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-clear-cart {
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--primary-red);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-clear-cart:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .btn-close-drawer {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--secondary-text);
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+
+    .btn-close-drawer:hover {
+      color: var(--primary-red);
+      background-color: var(--surface-white);
+    }
+
+    /* Cart Body Scrollable Area */
+    .cart-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .cart-item-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--divider);
+    }
+
+    .cart-item-thumb {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--divider);
+    }
+
+    .cart-item-info {
+      flex: 1;
+    }
+
+    .cart-item-name {
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-black);
+      margin-bottom: 4px;
+    }
+
+    .cart-item-calc {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--secondary-text);
+    }
+
+    .cart-item-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .btn-remove-item {
+      color: var(--primary-red);
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+
+    .btn-remove-item:hover {
+      transform: scale(1.2);
+    }
+
+    /* Empty Cart State */
+    .cart-empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .empty-cart-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+
+    .empty-cart-title {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-black);
+      margin-bottom: 8px;
+    }
+
+    .empty-cart-desc {
+      font-size: 14px;
+      color: var(--secondary-text);
+      margin-bottom: 24px;
+      max-width: 240px;
+    }
+
+    /* Cart Footer Fixed */
+    .cart-drawer-footer {
+      padding: 24px;
+      border-top: 1px solid var(--divider);
+      background-color: var(--surface-white);
+    }
+
+    .cart-summary-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--secondary-text);
+    }
+
+    .cart-summary-line.total-line {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--divider);
+      margin-bottom: 20px;
+    }
+
+    .total-label {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-black);
+    }
+
+    .total-amount {
+      font-family: var(--font-brand);
+      font-weight: 900;
+      font-size: 22px;
+      color: var(--primary-red);
+    }
+
+    .btn-whatsapp-order {
+      width: 100%;
+      height: 52px;
+      background-color: var(--whatsapp-green);
+      color: var(--bg-white);
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-radius: var(--border-radius-btn);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: var(--transition-smooth);
+      margin-bottom: 12px;
+    }
+
+    .btn-whatsapp-order:hover {
+      background-color: var(--whatsapp-hover);
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+    }
+
+    .btn-download-bill {
+      width: 100%;
+      height: 46px;
+      background: transparent;
+      border: 2px solid var(--text-black);
+      color: var(--text-black);
+      font-family: var(--font-brand);
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-radius: var(--border-radius-btn);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: var(--transition-smooth);
+    }
+
+    .btn-download-bill:hover {
+      background-color: var(--text-black);
+      color: var(--bg-white);
+    }
+
+    /* ==========================================================================
+       SECTION 5: FOOTER
+       ========================================================================== */
+    .footer {
+      background-color: var(--surface-white);
+      border-top: 1px solid var(--divider);
+      padding: 60px 0 30px;
+      text-align: center;
+    }
+
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-brand-title {
+      font-family: var(--font-brand);
+      font-weight: 900;
+      font-size: 28px;
+      color: var(--primary-red);
+      line-height: 1;
+    }
+
+    .footer-brand-sub {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      font-size: 10px;
+      color: var(--text-black);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .footer-stars {
+      color: var(--gold-star);
+      font-size: 16px;
+      letter-spacing: 4px;
+    }
+
+    .footer-tagline {
+      font-family: var(--font-tagline);
+      font-style: italic;
+      font-size: 17px;
+      color: var(--secondary-text);
+      max-width: 480px;
+    }
+
+    .footer-contact {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-black);
+      margin-top: 8px;
+    }
+
+    .footer-divider-line {
+      width: 100%;
+      max-width: var(--max-width);
+      height: 1px;
+      background-color: var(--divider);
+      margin: 40px auto 24px;
+    }
+
+    .footer-copyright {
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: #888888;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1024px) {
+      .hero-headline {
+        font-size: 48px;
+      }
+      .menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .hero-visual-circle {
+        width: 360px;
+        height: 360px;
+      }
+      .hero-brand-badge {
+        width: 230px;
+        height: 230px;
+      }
+      .hero-logo-img {
+        width: 180px;
+        height: 180px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        height: 64px;
+      }
+      .nav-links {
+        display: none;
+      }
+      .mobile-menu-toggle {
+        display: block;
+      }
+      .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .hero-left {
+        align-items: center;
+      }
+      .hero-headline {
+        font-size: 36px;
+      }
+      .hero-subheadline {
+        font-size: 16px;
+      }
+      .hero-cta-group {
+        width: 100%;
+        flex-direction: column;
+      }
+      .btn-primary, .btn-ghost {
+        width: 100%;
+      }
+      .trust-metrics-row {
+        gap: 12px;
+      }
+      .metric-number {
+        font-size: 24px;
+      }
+      .metric-label {
+        font-size: 11px;
+      }
+      .floating-card {
+        display: none;
+      }
+      .menu-grid {
+        grid-template-columns: 1fr;
+      }
+      .menu-tabs-container {
+        justify-content: flex-start;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .cart-drawer {
+        width: 100vw;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       SECTION 1: SPLASH SCREEN
+       ========================================================================== -->
+  <div id="splash-screen">
+    <div class="splash-logo-container">
+      <div class="splash-circle-badge">
+        <div class="splash-cloche-icon">🍽️</div>
+        <div class="splash-hfc-text">HFC</div>
+        <div class="splash-sub-text">CONSULTANCY SERVICES</div>
+        <div class="splash-stars">★★★★★</div>
+      </div>
+      <div class="splash-tagline">"Your Growth, Our Responsibility. All Within Your Budget."</div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       NAVIGATION BAR
+       ========================================================================== -->
+  <div class="navbar-sticky-wrapper" id="main-navbar">
+    <div class="container">
+      <nav class="navbar">
+        <a href="#" class="brand-logo-link">
+          <img src="brand logo/WhatsApp Image 2026-08-07 at 11.40.32 PM.jpeg" alt="HFC Consultancy Services Logo" class="brand-logo-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23CC0000\'/><text x=\'50\' y=\'62\' font-family=\'sans-serif\' font-weight=\'bold\' font-size=\'36\' fill=\'white\' text-anchor=\'middle\'>HFC</text></svg>'">
+          <div class="brand-text-group">
+            <span class="brand-title-hfc">HFC</span>
+            <span class="brand-subtitle-cs">CONSULTANCY SERVICES</span>
+          </div>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="#menu">Menu</a></li>
+          <li><a href="#about" onclick="openAboutModal(event)">About Us</a></li>
+          <li><a href="#contact" onclick="scrollToFooter(event)">Contact</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <button class="cart-trigger-btn" onclick="toggleCartDrawer(true)">
+            🛒 Cart <span class="cart-count-badge" id="nav-cart-count">0</span>
+          </button>
+          <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Mobile Overlay Menu -->
+  <div class="mobile-menu-overlay" id="mobile-menu">
+    <a href="#menu" onclick="toggleMobileMenu()">Menu</a>
+    <a href="#about" onclick="toggleMobileMenu(); openAboutModal(event)">About Us</a>
+    <a href="#contact" onclick="toggleMobileMenu(); scrollToFooter(event)">Contact</a>
+    <button class="btn-primary" onclick="toggleMobileMenu(); toggleCartDrawer(true)">View Cart 🛒</button>
+  </div>
+
+  <!-- ==========================================================================
+       SECTION 2: HERO SECTION
+       ========================================================================== -->
+  <section class="hero-section">
+    <div class="container">
+      <div class="hero-grid">
+        
+        <!-- Left Column Text Content -->
+        <div class="hero-left">
+          <div class="eyebrow-pill">
+            ★ Trusted by 200+ F&B Brands Across India
+          </div>
+          
+          <h1 class="hero-headline">
+            We Build Food Businesses<br>That Actually <span class="text-red">Grow.</span>
+          </h1>
+          
+          <p class="hero-subheadline">
+            From concept to kitchen — HFC Consultancy Services handles menu engineering, brand positioning, and full F&B setup, all within your budget.
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="#menu" class="btn-primary">EXPLORE OUR MENU</a>
+            <a href="https://wa.me/919876543210?text=Hi%20HFC%20Consultancy%20Services%2C%20I%20would%20like%20to%20talk%20about%20F%26B%20setup" target="_blank" class="btn-ghost">TALK TO US</a>
+          </div>
+
+          <div class="trust-metrics-row">
+            <div class="metric-item">
+              <span class="metric-number">200+</span>
+              <span class="metric-label">F&B Brands</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+              <span class="metric-number">15 Years</span>
+              <span class="metric-label">Experience</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+              <span class="metric-number">500+</span>
+              <span class="metric-label">Menus Crafted</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column Brand Display -->
+        <div class="hero-right">
+          <div class="hero-visual-circle">
+            <div class="hero-brand-badge">
+              <img src="brand logo/WhatsApp Image 2026-08-07 at 11.40.32 PM.jpeg" alt="HFC Brand Mark" class="hero-logo-img" onerror="this.style.display='none'; document.getElementById('fallback-hero-badge').style.display='flex';">
+              <div id="fallback-hero-badge" style="display:none; flex-direction:column; align-items:center;">
+                <span style="font-size:32px;">🍽️</span>
+                <span style="font-family:var(--font-brand); font-weight:900; font-size:54px; color:var(--primary-red);">HFC</span>
+                <span style="font-family:var(--font-brand); font-weight:700; font-size:9px; letter-spacing:2px;">CONSULTANCY</span>
+                <span style="color:var(--gold-star); font-size:12px; margin-top:4px;">★★★★★</span>
+              </div>
+            </div>
+
+            <!-- Floating Social Proof Card 1 -->
+            <div class="floating-card floating-card-1">
+              <div class="floating-card-title">
+                <span>🍴</span> Menu Ready
+              </div>
+              <div class="floating-card-subtitle">Launch in 7 Days</div>
+            </div>
+
+            <!-- Floating Social Proof Card 2 -->
+            <div class="floating-card floating-card-2">
+              <div class="floating-card-title">
+                <span class="star-rating">★ 4.9</span> (184 Reviews)
+              </div>
+              <div class="floating-card-subtitle">"Best F&B consultant"</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 3: MENU SYSTEM
+       ========================================================================== -->
+  <section class="menu-section" id="menu">
+    <div class="container">
+      
+      <!-- Section Header -->
+      <div class="section-header">
+        <div class="header-red-rule"></div>
+        <span class="eyebrow-menu">[ ★ OUR MENU ★ ]</span>
+        <h2 class="section-title">Crafted With Passion, Served With Pride</h2>
+        <p class="section-subtitle">
+          Every dish is built around flavor, quality, and the kind of experience your guests will come back for.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Category Tabs (Sticky Bar) -->
+    <div class="menu-tabs-wrapper">
+      <div class="container">
+        <div class="menu-tabs-container" id="category-tabs">
+          <button class="category-tab active" onclick="switchCategory('all', this)">✨ All Items</button>
+          <button class="category-tab" onclick="switchCategory('starters', this)">🍱 Starters</button>
+          <button class="category-tab" onclick="switchCategory('mains', this)">🍛 Main Course</button>
+          <button class="category-tab" onclick="switchCategory('breads', this)">🍞 Breads</button>
+          <button class="category-tab" onclick="switchCategory('salads', this)">🥗 Salads & Soups</button>
+          <button class="category-tab" onclick="switchCategory('beverages', this)">🥤 Beverages</button>
+          <button class="category-tab" onclick="switchCategory('desserts', this)">🍮 Desserts</button>
+          <button class="category-tab" onclick="switchCategory('snacks', this)">🍟 Snacks</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menu Cards Grid -->
+    <div class="container">
+      <div class="menu-grid" id="menu-grid">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 4: CART DRAWER SYSTEM
+       ========================================================================== -->
+  <div class="cart-backdrop" id="cart-backdrop" onclick="toggleCartDrawer(false)"></div>
+  
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-drawer-header">
+      <h3 class="cart-drawer-title">Your Order</h3>
+      <div class="cart-header-actions">
+        <button class="btn-clear-cart" id="btn-clear-all" onclick="clearCart()" style="display:none;">🗑 Clear All</button>
+        <button class="btn-close-drawer" onclick="toggleCartDrawer(false)">✕ Close</button>
+      </div>
+    </div>
+
+    <div class="cart-drawer-body" id="cart-items-container">
+      <!-- Cart items or empty state rendered dynamically -->
+    </div>
+
+    <div class="cart-drawer-footer" id="cart-drawer-footer">
+      <div class="cart-summary-line">
+        <span>Subtotal</span>
+        <span id="cart-subtotal">₹ 0</span>
+      </div>
+      <div class="cart-summary-line">
+        <span>GST (5%)</span>
+        <span id="cart-gst">₹ 0</span>
+      </div>
+      <div class="cart-summary-line total-line">
+        <span class="total-label">TOTAL</span>
+        <span class="total-amount" id="cart-total">₹ 0</span>
+      </div>
+
+      <button class="btn-whatsapp-order" onclick="placeOrderWhatsApp()">
+        <span>🛒</span> PLACE ORDER VIA WHATSAPP
+      </button>
+
+      <button class="btn-download-bill" onclick="downloadOrderSummary()">
+        <span>📋</span> DOWNLOAD ORDER SUMMARY
+      </button>
+    </div>
+  </div>
+
+  <!-- About Us Modal -->
+  <div id="about-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-white); border-radius:12px; padding:36px; max-width:540px; width:90%; position:relative; box-shadow:var(--box-shadow-hover);">
+      <button onclick="closeAboutModal()" style="position:absolute; top:16px; right:16px; font-size:18px; font-weight:bold;">✕</button>
+      <h3 style="font-family:var(--font-display); font-size:28px; color:var(--text-black); margin-bottom:12px;">About HFC Consultancy Services</h3>
+      <p style="font-family:var(--font-tagline); font-style:italic; color:var(--primary-red); margin-bottom:16px;">"Your Growth, Our Responsibility. All Within Your Budget."</p>
+      <p style="font-size:14px; color:var(--secondary-text); line-height:1.6; margin-bottom:16px;">
+        HFC Consultancy Services is a premier F&B advisory firm specializing in restaurant launches, cloud kitchen menu design, operational audits, and brand positioning. With over 15 years of industry experience and 200+ successful brand launches, we transform culinary visions into profitable reality.
+      </p>
+      <button class="btn-primary" onclick="closeAboutModal()" style="width:100%;">Close</button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       SECTION 5: FOOTER
+       ========================================================================== -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <div class="footer-brand-title">HFC</div>
+          <div class="footer-brand-sub">CONSULTANCY SERVICES</div>
+        </div>
+        <div class="footer-stars">★★★★★</div>
+        <p class="footer-tagline">"Your Growth, Our Responsibility. All Within Your Budget."</p>
+        <div class="footer-contact">
+          <span>📞 +91 98765 43210</span>
+          <span>•</span>
+          <span>📧 info@hfcconsultancy.com</span>
+        </div>
+      </div>
+      <div class="footer-divider-line"></div>
+      <div class="footer-copyright">
+        © 2024 HFC Consultancy Services. All rights reserved. Built with professional precision.
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       JAVASCRIPT APPLICATION LOGIC
+       ========================================================================== -->
+  <script>
+    /* --------------------------------------------------------------------------
+       1. MENU DATA STORE (38 Dishes across 7 Categories)
+       -------------------------------------------------------------------------- */
+    const menuItems = [
+      // 🍱 STARTERS
+      {
+        id: "st-1",
+        name: "Paneer Tikka",
+        price: 249,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Smoky cottage cheese marinated in yogurt and spices",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "st-2",
+        name: "Chicken Seekh Kebab",
+        price: 299,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Minced chicken with herbs, grilled on charcoal",
+        isVeg: false,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "st-3",
+        name: "Veg Spring Rolls",
+        price: 179,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Crispy rolls stuffed with seasonal vegetables",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "st-4",
+        name: "Mutton Sheekh",
+        price: 349,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Juicy mutton kebabs with bold masalas",
+        isVeg: false,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "st-5",
+        name: "Hara Bhara Kabab",
+        price: 199,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Spinach and peas patty, pan seared golden",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "st-6",
+        name: "Fish Amritsari",
+        price: 329,
+        category: "starters",
+        categoryLabel: "STARTER",
+        description: "Battered fish in Amritsari spice mix, fried crisp",
+        isVeg: false,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🍛 MAIN COURSE
+      {
+        id: "mc-1",
+        name: "Butter Chicken",
+        price: 349,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Classic North Indian chicken in rich tomato gravy",
+        isVeg: false,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "mc-2",
+        name: "Dal Makhani",
+        price: 249,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Slow cooked black lentils with cream and butter",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "mc-3",
+        name: "Paneer Lababdar",
+        price: 299,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Cottage cheese in velvety onion-cashew gravy",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "mc-4",
+        name: "Mutton Rogan Josh",
+        price: 449,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Kashmiri spiced slow-cooked mutton",
+        isVeg: false,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1545247181-516773cae754?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "mc-5",
+        name: "Chole Masala",
+        price: 229,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Punjabi spiced chickpea curry with tangy notes",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "mc-6",
+        name: "Chicken Hyderabadi",
+        price: 379,
+        category: "mains",
+        categoryLabel: "MAIN COURSE",
+        description: "Rich and aromatic Hyderabadi chicken gravy",
+        isVeg: false,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🍞 BREADS
+      {
+        id: "br-1",
+        name: "Butter Naan",
+        price: 49,
+        category: "breads",
+        categoryLabel: "BREAD",
+        description: "Soft tandoor-baked with butter glaze",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "br-2",
+        name: "Garlic Roti",
+        price: 39,
+        category: "breads",
+        categoryLabel: "BREAD",
+        description: "Whole wheat flatbread with garlic-herb butter",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "br-3",
+        name: "Lachha Paratha",
+        price: 59,
+        category: "breads",
+        categoryLabel: "BREAD",
+        description: "Layered flaky paratha, shallow fried",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "br-4",
+        name: "Stuffed Kulcha",
+        price: 79,
+        category: "breads",
+        categoryLabel: "BREAD",
+        description: "Filled with spiced paneer or aloo, baked fresh",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "br-5",
+        name: "Roomali Roti",
+        price: 35,
+        category: "breads",
+        categoryLabel: "BREAD",
+        description: "Paper-thin roti, traditionally hand-tossed",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🥗 SALADS & SOUPS
+      {
+        id: "ss-1",
+        name: "Tomato Shorba",
+        price: 119,
+        category: "salads",
+        categoryLabel: "SALAD & SOUP",
+        description: "Spiced Indian tomato soup with coriander",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ss-2",
+        name: "Chicken Broth",
+        price: 149,
+        category: "salads",
+        categoryLabel: "SALAD & SOUP",
+        description: "Clear ginger-pepper chicken soup",
+        isVeg: false,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ss-3",
+        name: "Kachumber Salad",
+        price: 99,
+        category: "salads",
+        categoryLabel: "SALAD & SOUP",
+        description: "Fresh diced cucumber, tomato, onion with chaat masala",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ss-4",
+        name: "Corn Palak Soup",
+        price: 129,
+        category: "salads",
+        categoryLabel: "SALAD & SOUP",
+        description: "Creamed spinach and corn with mild spices",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ss-5",
+        name: "Greek-Style Salad",
+        price: 159,
+        category: "salads",
+        categoryLabel: "SALAD & SOUP",
+        description: "Olives, feta, cucumber, cherry tomatoes, olive oil",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🥤 BEVERAGES
+      {
+        id: "bv-1",
+        name: "Mango Lassi",
+        price: 119,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Thick blended mango yogurt drink",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "bv-2",
+        name: "Rose Sharbat",
+        price: 89,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Rose syrup with chilled water and basil seeds",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "bv-3",
+        name: "Masala Chaas",
+        price: 79,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Spiced buttermilk with cumin and coriander",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1626078436896-b07248e3e449?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "bv-4",
+        name: "Fresh Lime Soda",
+        price: 69,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Sparkling or still with salt or sugar",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "bv-5",
+        name: "Cold Coffee",
+        price: 139,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Rich blended coffee with milk, chilled",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "bv-6",
+        name: "Watermelon Cooler",
+        price: 109,
+        category: "beverages",
+        categoryLabel: "BEVERAGE",
+        description: "Freshly pressed watermelon with mint",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🍮 DESSERTS
+      {
+        id: "ds-1",
+        name: "Gulab Jamun",
+        price: 99,
+        category: "desserts",
+        categoryLabel: "DESSERT",
+        description: "Soft milk-solid balls soaked in rose syrup (2 pcs)",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ds-2",
+        name: "Ras Malai",
+        price: 129,
+        category: "desserts",
+        categoryLabel: "DESSERT",
+        description: "Chenna patties in chilled saffron milk",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1599785209707-a456fc1337cc?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ds-3",
+        name: "Chocolate Brownie",
+        price: 159,
+        category: "desserts",
+        categoryLabel: "DESSERT",
+        description: "Warm fudgy brownie with vanilla ice cream scoop",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ds-4",
+        name: "Kheer",
+        price: 109,
+        category: "desserts",
+        categoryLabel: "DESSERT",
+        description: "Creamy rice pudding with cardamom and pistachios",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1517244683847-7456b63c5969?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ds-5",
+        name: "Kulfi Falooda",
+        price: 149,
+        category: "desserts",
+        categoryLabel: "DESSERT",
+        description: "Traditional kulfi on falooda noodles with rose syrup",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80"
+      },
+
+      // 🍟 SNACKS
+      {
+        id: "sn-1",
+        name: "Samosa (2 pcs)",
+        price: 59,
+        category: "snacks",
+        categoryLabel: "SNACK",
+        description: "Crispy fried pastry with spiced potato filling",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "sn-2",
+        name: "Pav Bhaji",
+        price: 129,
+        category: "snacks",
+        categoryLabel: "SNACK",
+        description: "Mumbai-style buttered bhaji with soft pav",
+        isVeg: true,
+        isBestseller: true,
+        image: "https://images.unsplash.com/photo-1626132647523-66f5bf380027?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "sn-3",
+        name: "Vada Pav",
+        price: 49,
+        category: "snacks",
+        categoryLabel: "SNACK",
+        description: "Spiced potato fritter in a bun with chutneys",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "sn-4",
+        name: "Aloo Tikki Chaat",
+        price: 99,
+        category: "snacks",
+        categoryLabel: "SNACK",
+        description: "Potato patties with yogurt, chutneys, and sev",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "sn-5",
+        name: "French Fries",
+        price: 89,
+        category: "snacks",
+        categoryLabel: "SNACK",
+        description: "Golden shoestring fries with house seasoning",
+        isVeg: true,
+        isBestseller: false,
+        image: "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+
+    /* --------------------------------------------------------------------------
+       2. CART STATE MANAGEMENT
+       -------------------------------------------------------------------------- */
+    let cart = []; // Stores { id, name, price, quantity, image, category }
+    let activeCategory = 'all';
+
+    function addToCart(itemId) {
+      const item = menuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const existingIndex = cart.findIndex(c => c.id === itemId);
+      if (existingIndex > -1) {
+        cart[existingIndex].quantity += 1;
+      } else {
+        cart.push({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+          image: item.image,
+          category: item.category
+        });
+      }
+
+      updateUI();
+      bounceBadge();
+    }
+
+    function updateQuantity(itemId, delta) {
+      const index = cart.findIndex(c => c.id === itemId);
+      if (index === -1) return;
+
+      cart[index].quantity += delta;
+      if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+      }
+
+      updateUI();
+    }
+
+    function removeFromCart(itemId) {
+      cart = cart.filter(c => c.id !== itemId);
+      updateUI();
+    }
+
+    function clearCart() {
+      cart = [];
+      updateUI();
+    }
+
+    function getCartTotals() {
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const gst = Math.round(subtotal * 0.05);
+      const total = subtotal + gst;
+      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+      return { subtotal, gst, total, count };
+    }
+
+    function bounceBadge() {
+      const badge = document.getElementById('nav-cart-count');
+      if (!badge) return;
+      badge.classList.add('bounce');
+      setTimeout(() => badge.classList.remove('bounce'), 250);
+    }
+
+    /* --------------------------------------------------------------------------
+       3. UI RENDERERS
+       -------------------------------------------------------------------------- */
+    function renderMenuCards() {
+      const grid = document.getElementById('menu-grid');
+      if (!grid) return;
+
+      const filtered = activeCategory === 'all' 
+        ? menuItems 
+        : menuItems.filter(item => item.category === activeCategory);
+
+      grid.style.opacity = '0';
+
+      setTimeout(() => {
+        grid.innerHTML = filtered.map(item => {
+          const cartItem = cart.find(c => c.id === item.id);
+          const qty = cartItem ? cartItem.quantity : 0;
+
+          const actionHtml = qty === 0
+            ? `<button class="btn-add-item" onclick="addToCart('${item.id}')">+ ADD</button>`
+            : `<div class="qty-stepper-inline">
+                <button class="stepper-btn" onclick="updateQuantity('${item.id}', -1)">−</button>
+                <span class="stepper-val">${qty}</span>
+                <button class="stepper-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
+               </div>`;
+
+          const dietHtml = item.isVeg
+            ? `<span class="diet-tag veg">🌱 Veg</span>`
+            : `<span class="diet-tag non-veg">🔴 Non-Veg</span>`;
+
+          const bestsellerHtml = item.isBestseller
+            ? `<span class="card-badge-bestseller">★ BESTSELLER</span>`
+            : '';
+
+          return `
+            <div class="menu-card" data-category="${item.category}">
+              <div class="card-image-wrapper">
+                <img src="${item.image}" alt="${item.name}" class="card-food-img" loading="lazy">
+                <span class="card-badge-category">${item.categoryLabel}</span>
+                ${bestsellerHtml}
+              </div>
+              
+              <div class="card-content">
+                <div class="card-title-row">
+                  <h3 class="card-food-name">${item.name}</h3>
+                </div>
+                <p class="card-description">${item.description}</p>
+                <div class="card-tags-row">
+                  ${dietHtml}
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <span class="card-price">₹ ${item.price}</span>
+                ${actionHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        grid.style.opacity = '1';
+      }, 150);
+    }
+
+    function renderCartDrawer() {
+      const container = document.getElementById('cart-items-container');
+      const clearBtn = document.getElementById('btn-clear-all');
+      const { subtotal, gst, total, count } = getCartTotals();
+
+      // Navbar badge
+      document.getElementById('nav-cart-count').innerText = count;
+
+      // Subtotal, GST, Total
+      document.getElementById('cart-subtotal').innerText = `₹ ${subtotal.toLocaleString('en-IN')}`;
+      document.getElementById('cart-gst').innerText = `₹ ${gst.toLocaleString('en-IN')}`;
+      document.getElementById('cart-total').innerText = `₹ ${total.toLocaleString('en-IN')}`;
+
+      if (cart.length === 0) {
+        if (clearBtn) clearBtn.style.display = 'none';
+        container.innerHTML = `
+          <div class="cart-empty-state">
+            <div class="empty-cart-icon">🍽️</div>
+            <h4 class="empty-cart-title">Your cart is empty</h4>
+            <p class="empty-cart-desc">Add your favourite dishes from our menu above.</p>
+            <button class="btn-primary" onclick="toggleCartDrawer(false); scrollToMenu();">BROWSE MENU</button>
+          </div>
+        `;
+        return;
+      }
+
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+      container.innerHTML = cart.map(item => `
+        <div class="cart-item-row">
+          <img src="${item.image}" alt="${item.name}" class="cart-item-thumb">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-calc">₹ ${item.price} × ${item.quantity} = <strong>₹ ${(item.price * item.quantity).toLocaleString('en-IN')}</strong></div>
+          </div>
+          <div class="cart-item-right">
+            <div class="qty-stepper-inline">
+              <button class="stepper-btn" onclick="updateQuantity('${item.id}', -1)">−</button>
+              <span class="stepper-val">${item.quantity}</span>
+              <button class="stepper-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
+            </div>
+            <button class="btn-remove-item" onclick="removeFromCart('${item.id}')" title="Remove item">🗑</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateUI() {
+      renderMenuCards();
+      renderCartDrawer();
+    }
+
+    /* --------------------------------------------------------------------------
+       4. INTERACTION HELPERS
+       -------------------------------------------------------------------------- */
+    function switchCategory(category, tabBtn) {
+      activeCategory = category;
+      const tabs = document.querySelectorAll('.category-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      if (tabBtn) tabBtn.classList.add('active');
+      renderMenuCards();
+    }
+
+    function toggleCartDrawer(open) {
+      const drawer = document.getElementById('cart-drawer');
+      const backdrop = document.getElementById('cart-backdrop');
+      if (open) {
+        drawer.classList.add('open');
+        backdrop.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      } else {
+        drawer.classList.remove('open');
+        backdrop.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('active');
+    }
+
+    function scrollToMenu() {
+      const menuSec = document.getElementById('menu');
+      if (menuSec) menuSec.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function scrollToFooter(e) {
+      if (e) e.preventDefault();
+      const footer = document.getElementById('footer');
+      if (footer) footer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openAboutModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('about-modal').style.display = 'flex';
+    }
+
+    function closeAboutModal() {
+      document.getElementById('about-modal').style.display = 'none';
+    }
+
+    /* --------------------------------------------------------------------------
+       5. ORDER CHECKOUT & DOWNLOAD
+       -------------------------------------------------------------------------- */
+    function placeOrderWhatsApp() {
+      if (cart.length === 0) {
+        alert("Your cart is empty! Please add some delicious items first.");
+        return;
+      }
+
+      const { subtotal, gst, total } = getCartTotals();
+      const now = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+      let message = `*NEW ORDER — HFC CONSULTANCY SERVICES*\n`;
+      message += `📅 Date: ${now}\n`;
+      message += `──────────────────────\n\n`;
+
+      cart.forEach((item, idx) => {
+        message += `${idx + 1}. *${item.name}*\n`;
+        message += `   Qty: ${item.quantity} × ₹${item.price} = ₹${item.price * item.quantity}\n`;
+      });
+
+      message += `\n──────────────────────\n`;
+      message += `Subtotal: ₹${subtotal.toLocaleString('en-IN')}\n`;
+      message += `GST (5%): ₹${gst.toLocaleString('en-IN')}\n`;
+      message += `*GRAND TOTAL: ₹${total.toLocaleString('en-IN')}*\n`;
+      message += `──────────────────────\n`;
+      message += `Please confirm my order. Thank you!`;
+
+      const encoded = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/919876543210?text=${encoded}`;
+      window.open(whatsappUrl, '_blank');
+    }
+
+    function downloadOrderSummary() {
+      if (cart.length === 0) {
+        alert("Your cart is empty! Add items to generate an order bill summary.");
+        return;
+      }
+
+      const { subtotal, gst, total } = getCartTotals();
+      const now = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+      let text = `==================================================\n`;
+      text += `            HFC CONSULTANCY SERVICES              \n`;
+      text += `   "Your Growth, Our Responsibility. All Within Your Budget." \n`;
+      text += `==================================================\n`;
+      text += `Date/Time: ${now}\n`;
+      text += `Order Receipt ID: HFC-${Math.floor(100000 + Math.random() * 900000)}\n`;
+      text += `--------------------------------------------------\n`;
+      text += `ITEM NAME                      QTY    PRICE     TOTAL\n`;
+      text += `--------------------------------------------------\n`;
+
+      cart.forEach(item => {
+        const namePad = item.name.padEnd(28, ' ');
+        const qtyPad = String(item.quantity).padStart(4, ' ');
+        const pricePad = `₹${item.price}`.padStart(8, ' ');
+        const itemTotal = `₹${item.price * item.quantity}`.padStart(9, ' ');
+        text += `${namePad} ${qtyPad} ${pricePad} ${itemTotal}\n`;
+      });
+
+      text += `--------------------------------------------------\n`;
+      text += `Subtotal:                              ₹${subtotal.toLocaleString('en-IN')}\n`;
+      text += `GST (5%):                              ₹${gst.toLocaleString('en-IN')}\n`;
+      text += `==================================================\n`;
+      text += `GRAND TOTAL:                           ₹${total.toLocaleString('en-IN')}\n`;
+      text += `==================================================\n\n`;
+      text += `Thank you for ordering with HFC Consultancy Services!\n`;
+      text += `Contact: +91 98765 43210 | info@hfcconsultancy.com\n`;
+
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HFC_Order_Summary_${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /* --------------------------------------------------------------------------
+       6. INITIALIZATION & SCROLL EVENTS
+       -------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Initial Render
+      updateUI();
+
+      // 2. Splash Screen Timing
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        setTimeout(() => {
+          splash.classList.add('exit');
+          setTimeout(() => {
+            splash.style.display = 'none';
+          }, 700);
+        }, 2800);
+      }
+
+      // 3. Navbar Scroll Shadow Listener
+      const navbarWrapper = document.getElementById('main-navbar');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 80) {
+          navbarWrapper.classList.add('scrolled');
+        } else {
+          navbarWrapper.classList.remove('scrolled');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

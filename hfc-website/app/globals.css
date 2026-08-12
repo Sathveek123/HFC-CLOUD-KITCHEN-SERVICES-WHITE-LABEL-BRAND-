@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-red: #CC0000;
+  --color-brand-redHover: #A30000;
+  --color-brand-redLight: rgba(204, 0, 0, 0.06);
+  --color-brand-black: #1A1A1A;
+  --color-brand-body: #4A4A4A;
+  --color-brand-muted: #6A6A6A;
+  --color-brand-border: #F0F0F0;
+  --color-brand-surface: #FAFAFA;
+  --color-brand-gold: #C9973A;
+  --color-brand-white: #FFFFFF;
+  --color-brand-green: #2E7D32;
+  --color-brand-whatsapp: #25D366;
+
+  --font-display: var(--font-display), 'Playfair Display', Georgia, serif;
+  --font-brand: var(--font-brand), Montserrat, sans-serif;
+  --font-body: var(--font-body), Inter, system-ui, sans-serif;
+  --font-tagline: var(--font-tagline), Lora, Georgia, serif;
+
+  --radius-card: 12px;
+  --radius-pill: 20px;
+  --radius-btn: 6px;
+
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.08);
+  --shadow-cardHover: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-drawer: -4px 0 40px rgba(0, 0, 0, 0.12);
+  --shadow-float: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+@utility scrollbar-hide {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FFFFFF;
+  color: #1A1A1A;
+  font-family: var(--font-body), sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}

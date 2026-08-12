@@ -1,0 +1,200 @@
+'use client'
+
+import React from 'react'
+import Link from 'next/link'
+import {
+  Star, Phone, Mail, MapPin, Clock, MessageCircle,
+  Share2, Globe, Send
+} from 'lucide-react'
+
+export default function Footer() {
+  const quickLinks = ['Home', 'Our Menu', 'About Us', 'Our Services', 'Client Stories', 'Contact']
+  const servicesList = [
+    'Menu Engineering',
+    'Brand Identity Design',
+    'Kitchen Setup & Layout',
+    'Staff Training Programs',
+    'Cost & Margin Optimization',
+    'Full F&B Consulting'
+  ]
+  const legalLinks = ['Privacy Policy', 'Terms of Service', 'Refund Policy']
+
+  return (
+    <footer className="bg-[#FAFAFA] border-t border-brand-border pt-16 pb-8 text-brand-black">
+      <div className="max-w-[1280px] mx-auto px-6">
+        
+        {/* Row 1 — Multi-column Footer Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr] gap-10 pb-12 border-b border-brand-border">
+          
+          {/* Column 1 — Brand Block */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-full border-2 border-brand-red flex items-center justify-center bg-white shadow-xs">
+                <span className="font-brand font-black text-[13px] text-brand-red">
+                  HFC
+                </span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-brand font-black text-[20px] text-brand-red">HFC</span>
+                <span className="font-brand font-semibold text-[8px] text-brand-black tracking-[2px] uppercase mt-0.5">
+                  Consultancy Services
+                </span>
+              </div>
+            </div>
+
+            <p className="font-body text-[13px] text-brand-body leading-[1.7] max-w-[280px]">
+              We help ambitious F&amp;B founders turn great food ideas into growing, sustainable businesses — from first concept to full-scale operations.
+            </p>
+
+            {/* Star rating strip */}
+            <div className="flex items-center gap-1.5 mt-4">
+              <div className="flex text-brand-gold">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <Star key={i} size={13} fill="#C9973A" color="#C9973A" />
+                ))}
+              </div>
+              <span className="font-body text-[12px] text-brand-muted ml-1">
+                4.9 out of 5 (184 reviews)
+              </span>
+            </div>
+
+            {/* Social Icons Row */}
+            <div className="flex items-center gap-3 mt-5">
+              {[
+                { icon: Globe, href: '#', label: 'Website' },
+                { icon: Share2, href: '#', label: 'Share' },
+                { icon: Send, href: '#', label: 'Telegram' },
+                { icon: MessageCircle, href: 'https://wa.me/919912799855', label: 'WhatsApp' }
+              ].map((item, idx) => {
+                const Icon = item.icon
+                return (
+                  <a
+                    key={idx}
+                    href={item.href}
+                    target={item.href.startsWith('http') ? '_blank' : '_self'}
+                    rel="noreferrer"
+                    aria-label={item.label}
+                    className="w-9 h-9 rounded-full border border-brand-border bg-white flex items-center justify-center hover:border-brand-red hover:bg-brand-redLight transition-all duration-200"
+                  >
+                    <Icon size={15} className="text-brand-black" />
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Column 2 — Quick Links */}
+          <div>
+            <h4 className="font-brand font-bold text-[13px] text-brand-black uppercase tracking-[1px] mb-4">
+              Quick Links
+            </h4>
+            <ul className="flex flex-col gap-2.5">
+              {quickLinks.map(link => (
+                <li key={link}>
+                  <Link
+                    href={link === 'Our Menu' ? '#menu-section' : '#'}
+                    className="font-body text-[13px] text-brand-body hover:text-brand-red transition-colors duration-150"
+                  >
+                    {link}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 3 — Our Services */}
+          <div>
+            <h4 className="font-brand font-bold text-[13px] text-brand-black uppercase tracking-[1px] mb-4">
+              Our Services
+            </h4>
+            <ul className="flex flex-col gap-2.5">
+              {servicesList.map(s => (
+                <li key={s}>
+                  <span className="font-body text-[13px] text-brand-body">
+                    {s}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 4 — Get in Touch */}
+          <div>
+            <h4 className="font-brand font-bold text-[13px] text-brand-black uppercase tracking-[1px] mb-4">
+              Get in Touch
+            </h4>
+
+            <div className="flex flex-col gap-3.5">
+              <a href="tel:+919912799855" className="flex items-start gap-2.5 group">
+                <Phone size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
+                <span className="font-body text-[13px] text-brand-body group-hover:text-brand-red transition-colors">
+                  +91 99127 99855
+                </span>
+              </a>
+
+              <a href="mailto:info@hfcconsultancy.com" className="flex items-start gap-2.5 group">
+                <Mail size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
+                <span className="font-body text-[13px] text-brand-body group-hover:text-brand-red transition-colors">
+                  info@hfcconsultancy.com
+                </span>
+              </a>
+
+              <div className="flex items-start gap-2.5">
+                <MapPin size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
+                <span className="font-body text-[13px] text-brand-body">
+                  Kasibugga, Srikakulam District, Andhra Pradesh, India
+                </span>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <Clock size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
+                <span className="font-body text-[13px] text-brand-body">
+                  Mon – Sat, 10 AM – 8 PM
+                </span>
+              </div>
+            </div>
+
+            {/* Direct WhatsApp CTA */}
+            <a
+              href="https://wa.me/919912799855"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-[#25D366] text-white font-brand font-semibold text-[12px] px-4 py-2.5 rounded-[6px] mt-5 hover:bg-[#1da851] transition-colors shadow-xs"
+            >
+              <MessageCircle size={14} />
+              Chat on WhatsApp
+            </a>
+          </div>
+
+        </div>
+
+        {/* Row 2 — Center Tagline Strip */}
+        <div className="text-center py-6">
+          <p className="font-tagline italic text-[15px] text-brand-body">
+            &quot;Your Growth, Our Responsibility. All Within Your Budget.&quot;
+          </p>
+        </div>
+
+        {/* Row 3 — Bottom Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-brand-border">
+          <p className="font-body text-[12px] text-[#888888]">
+            © {new Date().getFullYear()} HFC Consultancy Services. All rights reserved.
+          </p>
+
+          <div className="flex items-center gap-5">
+            {legalLinks.map(link => (
+              <a
+                key={link}
+                href="#"
+                className="font-body text-[11px] text-[#888888] hover:text-brand-red transition-colors"
+              >
+                {link}
+              </a>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </footer>
+  )
+}
