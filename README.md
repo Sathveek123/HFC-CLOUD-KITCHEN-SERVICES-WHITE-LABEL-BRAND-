@@ -2,22 +2,23 @@
 
 > A modern, ultra-secure, white-label cloud kitchen ordering platform, admin management dashboard, and delivery agent portal engineered with Next.js 16, TypeScript, Tailwind CSS, Supabase PostgreSQL, and Sentry Error Monitoring.
 
-[![Build Status](https://img.shields.io/badge/Build-Passing-2E7D32?style=for-the-badge&logo=nextdotjs)](http://localhost:3000)
-[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](http://localhost:3000)
-[![Compliance](https://img.shields.io/badge/Compliance-DPDP%20Act%202023-CC0000?style=for-the-badge)](http://localhost:3000/privacy)
+[![Deployment](https://img.shields.io/badge/Deployment-Vercel%20Production-000000?style=for-the-badge&logo=vercel)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
+[![Build Status](https://img.shields.io/badge/Build-Passing-2E7D32?style=for-the-badge&logo=nextdotjs)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
+[![Compliance](https://img.shields.io/badge/Compliance-DPDP%20Act%202023-CC0000?style=for-the-badge)](https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy)
 
 ---
 
-## 🔗 Quick Access URLs & Credentials
+## 🚀 Live Production Vercel URLs & Access Credentials
 
-| Portal / Screen | Access URL | Credentials / Notes |
-|-----------------|------------|---------------------|
-| 🌐 **Customer Website & Menu** | [http://localhost:3000](http://localhost:3000) | Public menu, interactive cart, coupon redemption, 2-step checkout |
-| 🔑 **Admin Control Panel** | [http://localhost:3000/admin/login](http://localhost:3000/admin/login) | **Username:** `hfc_admin`<br>**Email:** `admin@hfc-consultancy.com`<br>**Password / PIN:** `hfc2024-admin-secure-pass` |
-| 🛵 **Delivery Agent Portal** | [http://localhost:3000/agent/login](http://localhost:3000/agent/login) | **Agent 1:** `agent1` / `password123`<br>**Agent 2:** `agent2` / `password123` |
-| 📍 **Customer Live Order Tracker** | `http://localhost:3000/track/[orderId]` | Real-time status stepper, QR payment scanner, single-order RPC lookup |
-| ⚖️ **Privacy Policy (DPDP Act)** | [http://localhost:3000/privacy](http://localhost:3000/privacy) | Data subject rights, DPO contact, erasure requests |
-| 📜 **Terms of Service** | [http://localhost:3000/terms](http://localhost:3000/terms) | Order fulfillment terms, 5% GST computation, refund rules |
+| Portal / Screen | Production URL | Credentials / Notes |
+|-----------------|----------------|---------------------|
+| 🌐 **Customer Website & Menu** | [https://hfc-cloud-kitchen-services-white-la.vercel.app](https://hfc-cloud-kitchen-services-white-la.vercel.app) | Public menu, interactive cart, coupon redemption, 2-step checkout |
+| 🔑 **Admin Control Panel** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login) | **Username:** `hfc_admin`<br>**Email:** `admin@hfc-consultancy.com`<br>**Password / PIN:** `hfc2024-admin-secure-pass` |
+| 🛵 **Delivery Agent Portal** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login) | **Agent 1:** `agent1` / `password123`<br>**Agent 2:** `agent2` / `password123` |
+| 📍 **Customer Live Order Tracker** | `https://hfc-cloud-kitchen-services-white-la.vercel.app/track/[orderId]` | Real-time status stepper, QR payment scanner, single-order RPC lookup |
+| ⚖️ **Privacy Policy (DPDP Act)** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy](https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy) | Data subject rights, DPO contact, erasure requests |
+| 📜 **Terms of Service** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/terms](https://hfc-cloud-kitchen-services-white-la.vercel.app/terms) | Order fulfillment terms, 5% GST computation, refund rules |
 | 🐙 **GitHub Repository** | [GitHub Repo](https://github.com/Sathveek123/HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-) | Branch: `main` |
 
 ---
@@ -49,24 +50,15 @@ All database operations are governed by **Strict Row Level Security (RLS)** in P
 
 ---
 
-## 🛠️ Installation & Local Setup
+## 🛠️ Environment Variables for Vercel Deployment
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/Sathveek123/HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-.git
-cd HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-/hfc-website
+Ensure the following environment variables are set in your Vercel Project Settings (`Settings -> Environment Variables`):
 
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment variables (.env.local)
-cp .env.example .env.local
-
-# 4. Start Next.js development server
-npm run dev
-
-# 5. Build for production compilation check
-npm run build
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://cmwsffhenpckwkwgnmsy.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_hZmCQNTdDAuysF3iU4IaYA_daEHVI8D
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
 ```
 
 ---
