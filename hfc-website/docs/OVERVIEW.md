@@ -1,12 +1,18 @@
 # 🏗️ HFC Cloud Kitchen — Project Overview
 
+> **Production URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app  
+> **Supabase Project:** cmwsffhenpckwkwgnmsy  
+> **Stack:** Next.js 16.3 · TypeScript · Tailwind CSS v4 · Supabase · Zustand · Vercel
+
+---
+
 ## About the Project
 
 **HFC Consultancy Services** is a premium Food & Beverage consultancy brand based in Kasibugga, Srikakulam District, Andhra Pradesh, India. This application serves as their:
 
-1. **Customer-facing website** — Consultancy showcase + cloud kitchen ordering platform
-2. **Admin panel** — Full business management dashboard for the HFC team
-3. **Delivery agent portal** — Lightweight rider-facing app for order dispatch
+1. **Customer-facing website** — Cloud kitchen ordering platform with live menu, cart, and coupon support
+2. **Admin panel** — Full business management dashboard (orders, products, bills, coupons, agents, settings)
+3. **Delivery agent portal** — Lightweight rider-facing app for order dispatch and status updates
 
 ---
 
@@ -19,6 +25,12 @@
 | Styling | **Tailwind CSS v4** with custom HFC design tokens |
 | Animations | **Framer Motion** |
 | State Management | **Zustand** with `persist` middleware (localStorage) |
+| Database | **Supabase PostgreSQL** (cloud, primary source of truth) |
+| Realtime | **Supabase Realtime** WebSockets (sub-second cross-device sync) |
+| Auth | **Supabase Auth** (admin + agent credentials via `auth.users`) |
+| Error Monitoring | **Sentry** (`@sentry/nextjs` — active exception capture) |
+| Uptime Monitoring | **UptimeRobot** (12hr Supabase ping + 5min Vercel ping) |
+| Deployment | **Vercel** (auto-deploy from Git) |
 | QR Codes | `qrcode.react` |
 | Icons | **Lucide React** |
 | Date Utilities | `date-fns` |
@@ -32,27 +44,31 @@
 ```
 hfc-website/
 ├── app/                        # Next.js App Router pages
-│   ├── page.tsx                # Customer homepage (/)
+│   ├── page.tsx                # Customer homepage (/) + realtime sync bootstrap
 │   ├── layout.tsx              # Root layout (Navbar + Footer + Providers)
 │   ├── globals.css             # Global CSS + Tailwind imports
 │   ├── admin/                  # Admin Panel routes
 │   │   ├── login/page.tsx
 │   │   ├── dashboard/page.tsx
 │   │   ├── orders/
-│   │   │   ├── page.tsx        # Orders list
+│   │   │   ├── page.tsx        # Orders list (realtime)
 │   │   │   └── [orderId]/page.tsx  # Order detail
-│   │   ├── products/page.tsx
-│   │   ├── bills/page.tsx
-│   │   ├── coupons/page.tsx
-│   │   ├── agents/page.tsx
-│   │   └── settings/page.tsx
+│   │   ├── products/page.tsx   # Products management (realtime)
+│   │   ├── bills/page.tsx      # Bills & invoices (Supabase)
+│   │   ├── coupons/page.tsx    # Coupons, Offers & Reward Tiers (realtime)
+│   │   ├── agents/page.tsx     # Delivery agent management
+│   │   └── settings/page.tsx   # Business settings (realtime)
 │   ├── agent/                  # Delivery Agent Portal routes
 │   │   ├── layout.tsx          # Agent auth guard + topbar
 │   │   ├── login/page.tsx
-│   │   ├── orders/page.tsx     # My Orders
-│   │   └── report/page.tsx     # My Report
-│   └── track/
-│       └── [orderId]/page.tsx  # Live order tracker (customer-facing)
+│   │   ├── orders/page.tsx     # My Orders (realtime)
+│   │   └── report/page.tsx     # My Report (personal analytics)
+│   ├── track/
+│   │   └── [orderId]/page.tsx  # Live order tracker (customer-facing, realtime)
+│   └── api/
+│       └── admin/
+│           ├── agents/provision/route.ts  # Secure agent provisioning endpoint
+│           └── clean-orders/route.ts      # Admin maintenance endpoint
 │
 ├── components/                 # Reusable React components
 │   ├── admin/                  # Admin panel components
@@ -63,90 +79,90 @@ hfc-website/
 │   │   ├── coupons/            # CouponForm, RewardTierForm, etc.
 │   │   ├── agents/             # AddAgentForm, AgentsTable, etc.
 │   │   └── settings/           # Card-based settings components
-│   ├── hero/                   # Hero section components
-│   │   ├── HeroSection.tsx
-│   │   ├── HeroBrandCircle.tsx
-│   │   ├── HeroBadge.tsx
-│   │   └── HeroStats.tsx
-│   ├── cart/                   # Cart drawer + checkout
-│   │   ├── CartDrawer.tsx
-│   │   ├── CartItem.tsx
-│   │   └── CartButton.tsx
-│   ├── layout/                 # Site layout
-│   │   ├── Navbar.tsx
-│   │   └── Footer.tsx
-│   ├── menu/                   # Menu section components
-│   └── splash/                 # Splash screen
-│       └── SplashScreen.tsx
+│   ├── hero/                   # Hero section (HeroSection, HeroBrandCircle, etc.)
+│   ├── cart/                   # Cart drawer + checkout (CartDrawer, CartItem, CartButton)
+│   ├── layout/                 # Navbar, Footer
+│   ├── menu/                   # MenuSection, MenuGrid, MenuCard, CategoryTabs
+│   └── splash/                 # SplashScreen
 │
-├── store/                      # Zustand state stores
-│   ├── orderStore.ts           # Orders (single source of truth)
-│   ├── agentsStore.ts          # Delivery agents
-│   ├── agentAuthStore.ts       # Agent authentication session
-│   ├── adminAuthStore.ts       # Admin authentication session
-│   ├── cartStore.ts            # Shopping cart
-│   ├── productsStore.ts        # Menu products
-│   ├── couponsStore.ts         # Discount coupons
-│   ├── promotionsStore.ts      # Offers & reward tiers
-│   ├── billsStore.ts           # Bills / invoices
-│   └── settingsStore.ts        # Business settings
+├── store/                      # Zustand state stores (all Supabase-synced)
+│   ├── orderStore.ts           # Orders — Supabase + Realtime
+│   ├── agentsStore.ts          # Delivery agents — Supabase
+│   ├── agentAuthStore.ts       # Agent auth (localStorage persistence)
+│   ├── adminAuthStore.ts       # Admin auth
+│   ├── cartStore.ts            # Shopping cart (localStorage)
+│   ├── productsStore.ts        # Menu products — Supabase + Realtime + self-healer
+│   ├── promotionsStore.ts      # Coupons, Offers, Reward Tiers — Supabase + Realtime
+│   ├── billsStore.ts           # Bills — Supabase
+│   └── settingsStore.ts        # Business settings — Supabase + Realtime
 │
 ├── lib/                        # Utility functions
+│   ├── supabase.ts             # Supabase client singleton
+│   ├── supabaseSync.ts         # All sync functions, RPCs, and realtime subscriptions
 │   └── whatsapp.ts             # WhatsApp message builder + link opener
 │
 ├── hooks/                      # Custom React hooks
 │   └── useSplash.ts            # Splash screen show/skip logic
 │
 ├── data/                       # Static seed data
-│   └── menuData.ts             # Default menu items
+│   └── menuData.ts             # Default menu items (used as self-healer seed)
 │
-├── types/                      # TypeScript type definitions
-│
-└── docs/                       # This documentation
+└── docs/                       # This documentation (15 files — v2.2.0)
 ```
 
 ---
 
 ## 🔄 Data Architecture
 
-All application state lives in **Zustand persisted stores** backed by **localStorage**. This means:
-
-- **No backend server required** — pure client-side state
-- All panels (website, admin, agent) read from the **same localStorage keys**
-- Changes in the admin panel are instantly visible to the agent portal and order tracker in the **same browser session**
-- The order tracker polls every **6 seconds** using `setInterval` to catch status updates from other browser tabs
+```
+┌────────────────────────────────────────┐
+│     Supabase PostgreSQL (Cloud DB)     │  ← SINGLE SOURCE OF TRUTH
+│  orders · products · agents · bills   │
+│  settings (promotions + site config)  │
+└─────────────────┬──────────────────────┘
+                  │  Realtime WebSockets
+          ┌───────┴──────────┐
+          ▼                  ▼
+   Zustand Stores      All UI Surfaces
+   (localStorage       (Admin / Agent /
+     cache)             Customer website)
+```
 
 ### Key localStorage Keys
 
-| Key | Store | Contents |
-|-----|-------|----------|
-| `hfc-orders` | orderStore | All customer orders |
-| `hfc-agents` | agentsStore | Delivery agent accounts |
-| `hfc-products` | productsStore | Menu items |
-| `hfc-coupons` | couponsStore | Discount codes |
-| `hfc-promotions` | promotionsStore | Offers & reward tiers |
-| `hfc-bills` | billsStore | Bills & invoices |
-| `hfc-settings` | settingsStore | Business configuration |
+| Key | Store | Supabase Key |
+|-----|-------|-------------|
+| `hfc-orders` | orderStore | `public.orders` table |
+| `hfc-agents` | agentsStore | `public.agents` table |
+| `hfc-agent-session` | agentAuthStore | `auth.users` |
+| `hfc-products` | productsStore | `public.products` table |
+| `hfc-promotions` | promotionsStore | `settings.key = 'promotions'` |
+| `hfc-bills` | billsStore | `public.bills` table |
+| `hfc-settings` | settingsStore | `settings.key = 'site_settings'` |
 
 ---
 
 ## 🌐 Route Map
 
 ```
-/                           → Customer homepage
-/track/[orderId]            → Live order tracker
+/                           → Customer homepage (menu + cart + realtime)
+/track/[orderId]            → Live order tracker (realtime WebSocket)
 /admin/login                → Admin authentication
 /admin/dashboard            → Analytics & KPIs
-/admin/orders               → Orders list (all statuses)
+/admin/orders               → Orders list (all statuses, realtime)
 /admin/orders/[orderId]     → Order detail & management
-/admin/products             → Menu product management
+/admin/products             → Menu product management (realtime)
 /admin/bills                → Bills & invoices
-/admin/coupons              → Coupons, Offers & Reward Tiers
+/admin/coupons              → Coupons, Offers & Reward Tiers (realtime)
 /admin/agents               → Delivery agent accounts
-/admin/settings             → Business configuration
+/admin/settings             → Business configuration (realtime)
 /agent/login                → Agent authentication
-/agent/orders               → My Orders (agent-filtered)
+/agent/orders               → My Orders (agent-filtered, realtime)
 /agent/report               → My Report (personal analytics)
+/api/admin/agents/provision → Secure server-side agent creation endpoint
+/api/admin/clean-orders     → Admin maintenance endpoint
+/privacy                    → Privacy policy
+/terms                      → Terms & conditions
 ```
 
 ---
@@ -161,4 +177,20 @@ All order notifications use WhatsApp — no third-party API, zero cost:
 
 ---
 
-*See individual documentation files for detailed feature breakdowns.*
+## 🔒 Security Model
+
+| Layer | Protection |
+|-------|-----------|
+| Admin credentials | Supabase Auth JWT — `role: 'admin'` claim enforced at DB + client level |
+| Agent credentials | Stored only in Supabase Auth (`auth.users`) — no plaintext anywhere in codebase |
+| Order bulk dump | Blocked by RLS — customers can only fetch own order via `get_order_by_id()` RPC |
+| Settings writes | Protected by `sync_setting()` SECURITY DEFINER RPC |
+| Agent provisioning | Server-side API route (`/api/admin/agents/provision`) with JWT verification |
+| XSS defense | All user inputs sanitized via `sanitizeInput()` before storage |
+| Duplicate orders | Idempotency guard in `addOrder()` checks existing ID before insert |
+| Credential exposure | Full repo scan confirmed 0 hardcoded passwords in source files (v2.2.0) |
+| Uptime | UptimeRobot pings every 12hr (Supabase) + 5min (Vercel) — free tier never pauses |
+
+---
+
+*Last updated: v2.2.0 — Full Credential Scrub & Production Final Deploy — August 14, 2026*

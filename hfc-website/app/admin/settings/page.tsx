@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSettingsStore, Settings } from '@/store/settingsStore'
+import { subscribeToSettingRealtime } from '@/lib/supabaseSync'
+
 
 function FormLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -88,9 +90,25 @@ export default function AdminSettingsPage() {
   const [newPlanName, setNewPlanName] = useState('')
   const [newPlanPrice, setNewPlanPrice] = useState('')
 
+  // Sync from Supabase on mount and subscribe to realtime
+  useEffect(() => {
+    const store = useSettingsStore.getState()
+    store.fetchAndSyncSettings()
+
+    const unsubPublic = subscribeToSettingRealtime('site_settings', (val) => {
+      if (val) useSettingsStore.getState().setSettingsFromSupabase(val)
+    })
+    const unsubPrivate = subscribeToSettingRealtime('site_settings_private', (val) => {
+      if (val) useSettingsStore.getState().setSettingsFromSupabase(val)
+    })
+
+    return () => { unsubPublic(); unsubPrivate() }
+  }, [])
+
   useEffect(() => {
     setDraft(storeSettings)
   }, [storeSettings])
+
 
   const handleFieldChange = (key: keyof Settings, value: any) => {
     setDraft(prev => ({ ...prev, [key]: value }))

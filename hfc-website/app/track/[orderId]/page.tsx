@@ -8,6 +8,9 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useOrderStore, OrderRecord, OrderStatus } from '@/store/orderStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { subscribeToOrderRealtime, fetchSingleOrderRPC } from '@/lib/supabaseSync'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import TrackerErrorBoundaryFallback from '@/components/tracker/TrackerErrorBoundaryFallback'
+
 
 interface TrackPageProps {
   params: Promise<{ orderId: string }>
@@ -70,23 +73,46 @@ function getStatusMessage(status: OrderStatus, orderType: string): string {
 
 export default function TrackOrderPage({ params }: TrackPageProps) {
   const { orderId } = use(params)
+  return (
+    <ErrorBoundary fallback={<TrackerErrorBoundaryFallback orderId={orderId} />}>
+      <TrackOrderPageInner orderId={orderId} />
+    </ErrorBoundary>
+  )
+}
 
+function TrackOrderPageInner({ orderId }: { orderId: string }) {
   const getOrderById = useOrderStore(state => state.getOrderById)
   const updatePaymentStatus = useOrderStore(state => state.updatePaymentStatus)
   const settings = useSettingsStore(state => state.settings)
 
-  const [order, setOrder] = useState<OrderRecord | undefined>(() => getOrderById(orderId))
+  const [mounted, setMounted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [order, setOrder] = useState<OrderRecord | undefined>(undefined)
   const [justUpdated, setJustUpdated] = useState(false)
-  const prevStatusRef = useRef<OrderStatus | undefined>(order?.status)
+  const prevStatusRef = useRef<OrderStatus | undefined>(undefined)
 
   // ─── Instant Supabase Realtime Subscription + Polling fallback ──────────
   useEffect(() => {
+    setMounted(true)
+
+    // Try to get from local store first to show immediate cached order details
+    const localOrder = getOrderById(orderId)
+    if (localOrder) {
+      setOrder(localOrder)
+      prevStatusRef.current = localOrder.status
+      setIsLoading(false)
+    }
+
     // 1. Initial RPC single-order fetch (SECURITY DEFINER — prevents bulk DB dumps!)
     fetchSingleOrderRPC(orderId).then(remoteOrder => {
       if (remoteOrder) {
         setOrder(remoteOrder)
         prevStatusRef.current = remoteOrder.status
       }
+      setIsLoading(false)
+    }).catch((err) => {
+      console.error('Failed to fetch order details:', err)
+      setIsLoading(false)
     })
 
     const handleUpdate = (latest: OrderRecord) => {
@@ -118,10 +144,9 @@ export default function TrackOrderPage({ params }: TrackPageProps) {
       if (latest) handleUpdate(latest)
     }
 
-    poll()
     const interval = setInterval(poll, 6000)
 
-    // 2. Instant Supabase Realtime WebSockets
+    // 3. Instant Supabase Realtime WebSockets
     const unsubscribeRealtime = subscribeToOrderRealtime(orderId, (updatedOrder) => {
       handleUpdate(updatedOrder)
     })
@@ -131,6 +156,17 @@ export default function TrackOrderPage({ params }: TrackPageProps) {
       unsubscribeRealtime()
     }
   }, [orderId, getOrderById, updatePaymentStatus])
+
+  // ─── MOUNT / LOADING STATE (Avoids hydration mismatch) ────────────────────
+
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen bg-brand-surface flex flex-col items-center justify-center p-6 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-red mb-4"></div>
+        <p className="font-body text-[14px] text-brand-body">Loading your order details...</p>
+      </div>
+    )
+  }
 
   // ─── ORDER NOT FOUND ─────────────────────────────────────────────────────────
 

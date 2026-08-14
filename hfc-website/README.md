@@ -14,8 +14,8 @@
 | Portal / Screen | Production URL | Credentials / Notes |
 |-----------------|----------------|---------------------|
 | 🌐 **Customer Website & Menu** | [https://hfc-cloud-kitchen-services-white-la.vercel.app](https://hfc-cloud-kitchen-services-white-la.vercel.app) | Public menu, interactive cart, coupon redemption, 2-step checkout |
-| 🔑 **Admin Control Panel** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login) | **Username:** `hfc_admin`<br>**Email:** `admin@hfc-consultancy.com`<br>**Password / PIN:** `hfc2024-admin-secure-pass` |
-| 🛵 **Delivery Agent Portal** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login) | **Agent 1:** `agent1` / `password123`<br>**Agent 2:** `agent2` / `password123` |
+| 🔑 **Admin Control Panel** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login) | **Username:** `admin` — Password configured via Supabase Auth |
+| 🛵 **Delivery Agent Portal** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login) | Credentials provisioned via Admin Panel → Agents page |
 | 📍 **Customer Live Order Tracker** | `https://hfc-cloud-kitchen-services-white-la.vercel.app/track/[orderId]` | Real-time status stepper, QR payment scanner, single-order RPC lookup |
 | ⚖️ **Privacy Policy (DPDP Act)** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy](https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy) | Data subject rights, DPO contact, erasure requests |
 | 📜 **Terms of Service** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/terms](https://hfc-cloud-kitchen-services-white-la.vercel.app/terms) | Order fulfillment terms, 5% GST computation, refund rules |

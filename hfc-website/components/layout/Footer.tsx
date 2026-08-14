@@ -7,7 +7,17 @@ import {
   Share2, Globe, Send
 } from 'lucide-react'
 
+import { useSettingsStore } from '@/store/settingsStore'
+
 export default function Footer() {
+  const settings = useSettingsStore(state => state.settings)
+  const phone = settings?.phone || '9912799855'
+  const whatsappNumber = settings?.whatsappNumber || '919912799855'
+  const address = settings?.kitchenAddress || 'Kasibugga, Srikakulam District, Andhra Pradesh, India'
+  const formattedPhone = settings?.phone
+    ? `+91 ${settings.phone.slice(0, 5)} ${settings.phone.slice(5)}`
+    : '+91 99127 99855'
+
   const quickLinks = ['Home', 'Our Menu', 'About Us', 'Our Services', 'Client Stories', 'Contact']
   const servicesList = [
     'Menu Engineering',
@@ -64,7 +74,7 @@ export default function Footer() {
                 { icon: Globe, href: '#', label: 'Website' },
                 { icon: Share2, href: '#', label: 'Share' },
                 { icon: Send, href: '#', label: 'Telegram' },
-                { icon: MessageCircle, href: 'https://wa.me/919912799855', label: 'WhatsApp' }
+                { icon: MessageCircle, href: `https://wa.me/${whatsappNumber}`, label: 'WhatsApp' }
               ].map((item, idx) => {
                 const Icon = item.icon
                 return (
@@ -125,10 +135,10 @@ export default function Footer() {
             </h4>
 
             <div className="flex flex-col gap-3.5">
-              <a href="tel:+919912799855" className="flex items-start gap-2.5 group">
+              <a href={`tel:+91${phone}`} className="flex items-start gap-2.5 group">
                 <Phone size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
                 <span className="font-body text-[13px] text-brand-body group-hover:text-brand-red transition-colors">
-                  +91 99127 99855
+                  {formattedPhone}
                 </span>
               </a>
 
@@ -142,7 +152,7 @@ export default function Footer() {
               <div className="flex items-start gap-2.5">
                 <MapPin size={14} className="text-brand-red mt-0.5 flex-shrink-0" />
                 <span className="font-body text-[13px] text-brand-body">
-                  Kasibugga, Srikakulam District, Andhra Pradesh, India
+                  {address}
                 </span>
               </div>
 
@@ -156,7 +166,7 @@ export default function Footer() {
 
             {/* Direct WhatsApp CTA */}
             <a
-              href="https://wa.me/919912799855"
+              href={`https://wa.me/${whatsappNumber}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 bg-[#25D366] text-white font-brand font-semibold text-[12px] px-4 py-2.5 rounded-[6px] mt-5 hover:bg-[#1da851] transition-colors shadow-xs"

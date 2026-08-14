@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { useOrderStore, OrderRecord, OrderStatus } from '@/store/orderStore'
 import { useAgentsStore } from '@/store/agentsStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { fetchAgentsFromSupabase } from '@/lib/supabaseSync'
 import AdminBadge from '@/components/admin/shared/AdminBadge'
 import AdminButton from '@/components/admin/shared/AdminButton'
 
@@ -26,6 +27,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const markAsSeen = useOrderStore(state => state.markAsSeen)
 
   const agents = useAgentsStore(state => state.agents)
+  const upsertAgents = useAgentsStore(state => state.upsertAgents)
   const settings = useSettingsStore(state => state.settings)
 
   useEffect(() => {
@@ -33,6 +35,15 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       markAsSeen(orderId)
     }
   }, [orderId, order, markAsSeen])
+
+  // Sync agents list on mount
+  useEffect(() => {
+    fetchAgentsFromSupabase().then(fetched => {
+      if (fetched && fetched.length > 0) {
+        upsertAgents(fetched)
+      }
+    })
+  }, [upsertAgents])
 
   if (!order) {
     return (

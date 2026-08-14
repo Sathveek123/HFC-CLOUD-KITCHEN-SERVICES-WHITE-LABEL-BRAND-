@@ -1,138 +1,98 @@
 # ⚙️ HFC Settings Panel — Complete Documentation
 
-**URL:** `/admin/settings`  
-**File:** `app/admin/settings/page.tsx`  
-**Store:** `store/settingsStore.ts` (key: `hfc-settings`)
+> **URL:** `/admin/settings`  
+> **File:** `app/admin/settings/page.tsx`  
+> **Store:** `store/settingsStore.ts` (key: `hfc-settings`)  
+> **Supabase Path:** `public.settings` rows `site_settings` and `site_settings_private` (JSONB)
 
 ---
 
 ## Overview
 
-The Settings page is the **business configuration hub** that drives live site behavior across the entire HFC application. All 7 cards are collected together and saved atomically via a single sticky "Save Settings" button at the bottom.
+The Settings page is the **business configuration hub** that drives live site behavior across the entire HFC application. Settings are split into:
+1. **Cards 1–5**: Core settings saved via the "Save settings" form submission.
+2. **Card 6**: Delivery Areas (managed dynamically with instant auto-save).
+3. **Card 7**: Subscription Plans (managed dynamically with instant auto-save).
+
+Any change here automatically upserts to Supabase and broadcasts to all clients in **real-time** (< 1s).
 
 ---
 
-## 💾 Save Behavior
+## 💾 Save & Sync Behavior
 
-**Sticky Save Bar** (`components/admin/settings/StickySaveBar.tsx`):
-
-- Fixed at bottom of viewport while any setting card is dirty
-- Shows "Unsaved changes" indicator when local state differs from stored state
-- Single click commits **all** changes across all 7 cards simultaneously
-- `settingsStore.updateSettings(payload)` → persisted to localStorage under `hfc-settings`
+- **Initial Load**: On page mount, `fetchAndSyncSettings()` fetches both `site_settings` (public values) and `site_settings_private` (credentials) from Supabase.
+- **Real-time Sync**: The page subscribes to Postgres changes on the `settings` table. If settings are updated on another device, they sync live.
+- **Sensitive Data Isolation**: To prevent exposing Meta Cloud API access tokens to anonymous clients, API keys are synced separately to `site_settings_private`. Public values like delivery fees and UPI IDs go to `site_settings`.
 
 ---
 
-## 🃏 Card 1 — License & Verification
+## 🃏 Card 1 — License
 
-**Component:** `LicenseCard.tsx`
+Shows the active product licensing details. Gated client-side to prevent unauthorized domain usage.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| License Key | text | HFC product license |
-| License Status | badge | `active` / `inactive` / `trial` |
-
-Used to gate premium features (subscription plans, advanced analytics, etc.).
+| License Key | textarea | HFC product license key |
+| Status Badge | text | Active (green check) or Not licensed (amber alert) |
 
 ---
 
 ## 🎨 Card 2 — Branding
 
-**Component:** `BrandingCard.tsx`
+Controls brand information displayed across pages and messages.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| Site / Business Name | text | e.g. "HFC Consultancy Services" — used in page title, WhatsApp messages |
-| Tagline | text | e.g. "Your Growth, Our Responsibility" |
-| Phone Number | text | Used in Navbar, Footer, order tracker "Call HFC" button |
-| WhatsApp Number | text | With country code, e.g. `919912799855` |
-| Email Address | text | Used in footer contact column |
-| Business Address | textarea | Used in footer |
-| Logo URL | text | URL to logo image — replaces default HFC badge |
+| Kitchen / Site Name | text | e.g. "HFC Consultancy Services" |
+| Logo | file upload | Uploads image and converts to Base64 format |
+| Phone | text | Used in Navbar, Footer, and tracker "Call HFC" link |
+| WhatsApp Number | text | Numeric only with country code, e.g. `919912799855` |
+| Kitchen Address | textarea | Displayed in invoice bills and footer |
 
-**Live impact:** Changes to `siteName`, `phone`, `whatsappNumber` immediately affect:
-- Order WhatsApp message recipient number
-- Footer contact details
-- Tracker "Call HFC" button href
-- Page `<title>` tag and metadata
+**Live impact:** Changes to branding update footer contacts, invoice headers, and the WhatsApp message recipient target instantly.
 
 ---
 
-## 🧾 Card 3 — GST Configuration
+## 🧾 Card 3 — GST
 
-**Component:** `GstCard.tsx`
+Controls split tax calculations displayed during checkout and on printed bills.
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| GST Enabled | toggle | `true` | Master on/off for tax calculation |
-| GST Percentage (%) | number | `5` | Applied to subtotal after discounts |
-| GST Number (GSTIN) | text | - | Printed on bills |
+| GST Mode | select | `exclusive` | `none` (no GST) / `inclusive` (in price) / `exclusive` (added at checkout) |
+| GST % | number | `5` | Split evenly as CGST and SGST on customer bills |
 
-**Calculation formula:**
-```
-GST Amount = Math.round((subtotal - discountAmount) * (gstPercentage / 100))
-Total = subtotal - discountAmount + gstAmount + deliveryCharge
-```
-
-If `gstEnabled = false`, GST line is hidden from bills and totals.
+**Calculation logic:** CGST and SGST are calculated at half of the total GST percentage each (e.g. 5% total split into 2.5% CGST + 2.5% SGST on invoice).
 
 ---
 
 ## 🛵 Card 4 — Delivery & Payment
 
-**Component:** `DeliveryPaymentCard.tsx`
-
-### Delivery Sub-section
+Configures checkout rates, payment modes, and payment targets.
 
 | Field | Type | Default | Notes |
 |-------|------|---------|-------|
-| Delivery Enabled | toggle | `true` | If off, "Home Delivery" option hidden in checkout |
-| Delivery Charge (₹) | number | `40` | Added to order total for delivery orders |
-| Free Delivery Above (₹) | number | `500` | Orders above this value: delivery charge waived |
-
-**Logic at checkout:**
-```typescript
-const charge = orderType === 'delivery' && subtotal < freeDeliveryAbove
-  ? deliveryCharge
-  : 0
-```
-
-### Payment Sub-section
-
-| Field | Type | Notes |
-|-------|------|-------|
-| UPI ID | text | e.g. `9912799855@okbizaxis` — used for QR code generation on tracker |
-| Cash on Delivery | toggle | Shows "Cash" payment option in checkout |
-| UPI Payment | toggle | Shows "UPI" payment option in checkout |
-
-**UPI QR Generation:**
-```
-upi://pay?pa={upiId}&pn={siteName}&am={total}&cu=INR
-```
-This deep link is converted to a QR code on the order tracker page using `qrcode.react`.
+| Delivery Fee | number | `50` | Charged on delivery orders |
+| Free Delivery Above | number | `500` | Free delivery threshold (0 = never free) |
+| Currency Symbol | text | `₹` | Used for all currency labels |
+| UPI ID | text | - | target for checkout QR code generation (leave blank to hide QR) |
+| Accept Cash | checkbox | `true` | Allows Cash on Delivery option |
+| Accept Online (UPI/QR) | checkbox | `true` | Allows UPI payment option |
 
 ---
 
 ## 📱 Card 5 — WhatsApp Auto-Send
 
-**Component:** `WhatsAppAutoSendCard.tsx`
+Configures webhook triggers to Meta Cloud APIs for automatic status message dispatching.
 
-Controls which order status events trigger automatic WhatsApp notifications to the customer.
-
-| Toggle | Event | Message Sent |
-|--------|-------|--------------|
-| Auto-Send Enabled | Master toggle | Enables/disables all auto-sends |
-| On Order Placed | Customer places order | Order confirmation + tracker link |
-| On Order Accepted | Admin accepts | "Your order is being prepared" |
-| On Order Delivered | Delivered status | "Your order has been delivered" |
-
-> **Note:** Currently the WhatsApp "sending" is implemented as a link opener (window.open). True automated sending would require WhatsApp Business API or a webhook relay.
+| Field | Type | Description |
+|-------|------|-------------|
+| Cloud API access token | password | Permanent or temporary Meta token |
+| Phone number ID | text | Meta API phone node reference |
 
 ---
 
 ## 📍 Card 6 — Delivery Areas
-
-**Component:** `DeliveryAreasCard.tsx`
 
 Manage the delivery zones where HFC delivers.
 
@@ -140,127 +100,70 @@ Manage the delivery zones where HFC delivers.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| Area Name | text | e.g. "Kasibugga Main", "Labour Colony", "Flat Area" |
-| Is Active | toggle | Active areas shown in customer checkout area dropdown |
+| Area Name | text | e.g. "Labour Colony", "Maruthi Nagar" |
+| Is Active | badge | Active zones appear in customer checkout selection dropdown |
 
 ### Actions
-- Add new area (name input + Add button)
-- Toggle area active/inactive inline
-- Delete area (with inline confirm)
-
-### `DeliveryArea` Type
-
-```typescript
-interface DeliveryArea {
-  id: string
-  name: string
-  isActive: boolean
-}
-```
-
-**Customer-facing:** The delivery area names appear as a dropdown in the checkout form when order type is "Home Delivery". Customer selects their area for the admin to reference for routing.
+- **Add area**: Type name and hit Enter or click Add area.
+- **Active / Paused toggle**: Toggle availability instantly.
+- **Delete**: Remove area with inline confirm trigger.
 
 ---
 
 ## 📦 Card 7 — Subscription Plans
 
-**Component:** `SubscriptionPlansCard.tsx`
-
-HFC offers subscription meal plans to regular customers (e.g., monthly tiffin service).
+Informational meal plans displayed to regular clients registerable on sign-up sheets.
 
 ### Subscription Plan Fields
 
 | Field | Type | Notes |
 |-------|------|-------|
-| Plan Name | text | e.g. "Basic Tiffin", "Premium Lunch Plan" |
-| Price Per Month (₹) | number | Monthly subscription fee |
-| Meals Per Day | number | Number of meals included daily |
-| Description | textarea | What's included in the plan |
-| Is Active | toggle | Show/hide plan from website |
-
-### `SubscriptionPlan` Type
-
-```typescript
-interface SubscriptionPlan {
-  id: string
-  name: string
-  pricePerMonth: number
-  mealsPerDay: number
-  description: string
-  isActive: boolean
-}
-```
-
-### Actions
-- Add new plan (inline form expansion)
-- Edit plan (inline)
-- Toggle active/inactive
-- Delete plan (with confirm)
+| Plan Name | text | e.g. "Basic Tier", "Gold Meal Plan" |
+| Price / month | number | Cost of tiffin plan in ₹ |
+| Is Active | badge | Active plans appear in registration options |
 
 ---
 
 ## 🔄 Settings Store Schema
 
-**Full `Settings` interface:**
-
 ```typescript
 interface Settings {
-  // Card 1 — License
+  // License
   licenseKey: string
-  licenseStatus: 'active' | 'inactive' | 'trial'
+  isLicensed: boolean
+  licensedDomain: string
+  licenseValidUntil: string
 
-  // Card 2 — Branding
+  // Branding
   siteName: string
-  tagline: string
+  logoBase64: string | null
   phone: string
   whatsappNumber: string
-  email: string
-  address: string
-  logoUrl: string
+  kitchenAddress: string
 
-  // Card 3 — GST
-  gstEnabled: boolean
-  gstPercentage: number
-  gstNumber: string
+  // GST
+  gstMode: 'none' | 'inclusive' | 'exclusive'
+  gstPercent: number
 
-  // Card 4 — Delivery & Payment
-  deliveryEnabled: boolean
-  deliveryCharge: number
+  // Delivery & Payment
+  deliveryFee: number
   freeDeliveryAbove: number
+  currencySymbol: string
   upiId: string
-  cashEnabled: boolean
-  upiEnabled: boolean
+  acceptCash: boolean
+  acceptOnline: boolean
 
-  // Card 5 — WhatsApp Auto-send
-  whatsappAutoSend: boolean
-  autoSendOnPlaced: boolean
-  autoSendOnAccepted: boolean
-  autoSendOnDelivered: boolean
+  // WhatsApp Auto-send
+  cloudApiToken: string
+  cloudApiPhoneId: string
 
-  // Card 6 — Delivery Areas
+  // Delivery Areas
   deliveryAreas: DeliveryArea[]
 
-  // Card 7 — Subscription Plans
+  // Subscription Plans
   subscriptionPlans: SubscriptionPlan[]
 }
 ```
-
-### Default Settings Values
-
-| Setting | Default |
-|---------|---------|
-| siteName | "HFC Consultancy Services" |
-| phone | "9912799855" |
-| whatsappNumber | "919912799855" |
-| gstEnabled | true |
-| gstPercentage | 5 |
-| deliveryEnabled | true |
-| deliveryCharge | 40 |
-| freeDeliveryAbove | 500 |
-| upiId | "9912799855@okbizaxis" |
-| cashEnabled | true |
-| upiEnabled | true |
-| licenseStatus | "trial" |
 
 ---
 
@@ -268,12 +171,10 @@ interface Settings {
 
 | Setting Changed | Live Impact |
 |----------------|-------------|
-| `siteName` | Page titles, WhatsApp messages, UPI QR payer name |
-| `phone` | Footer "Call" link, Tracker "Call HFC" button |
-| `whatsappNumber` | Order WhatsApp recipient, Agent notification link |
-| `upiId` | UPI QR code on order tracker |
-| `gstEnabled` / `gstPercentage` | Cart total calculation, bill line items |
-| `deliveryEnabled` | Checkout order type options |
-| `deliveryCharge` / `freeDeliveryAbove` | Cart delivery charge calculation |
-| `deliveryAreas` | Checkout delivery area dropdown |
-| `subscriptionPlans` | Customer-facing plan cards (if implemented) |
+| `siteName` | Tab titles, checkout header, WhatsApp order templates |
+| `logoBase64` | Navbar logo and order confirmation displays |
+| `phone` / `whatsappNumber` | Target recipients for ordering, customer assistance links |
+| `deliveryFee` / `freeDeliveryAbove` | Checkout subtotal/total calculations |
+| `upiId` | Generated UPI deep link / QR code on order tracker |
+| `gstMode` / `gstPercent` | CGST + SGST line calculations on bills and checkout drawers |
+| `deliveryAreas` | Address zone selector list during checkout |

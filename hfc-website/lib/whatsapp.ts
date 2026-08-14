@@ -1,9 +1,13 @@
 import { OrderRecord } from '@/store/orderStore'
+import { useSettingsStore } from '@/store/settingsStore'
 
 export const MERCHANT_PHONE = '919912799855'
 export const MERCHANT_UPI_ID = '9912799855@okbizaxis'
 
 export function buildWhatsAppOrderMessage(order: OrderRecord, siteOrigin: string = 'https://hfc-website.vercel.app'): string {
+  const settings = useSettingsStore.getState().settings
+  const upiId = settings?.upiId || MERCHANT_UPI_ID
+
   const orderTypeLabels: Record<string, string> = {
     'dine-in': '🍽 DINE-IN',
     'takeaway': '🛍 TAKEAWAY',
@@ -53,7 +57,7 @@ export function buildWhatsAppOrderMessage(order: OrderRecord, siteOrigin: string
   message += `💰 *TOTAL AMOUNT: ₹${order.total.toLocaleString('en-IN')}*\n`
   message += `==========================\n`
   message += `📱 *TAP TO PAY VIA UPI (PhonePe / GPay / Paytm):*\n`
-  message += `upi://pay?pa=${MERCHANT_UPI_ID}&pn=HFC%20Consultancy%20Services&am=${order.total}&cu=INR\n`
+  message += `upi://pay?pa=${upiId}&pn=HFC%20Consultancy%20Services&am=${order.total}&cu=INR\n`
   message += `📸 *PAYMENT & ORDER VERIFICATION:*\n`
   message += `- If paying via UPI, tap the link above and reply with a screenshot of your payment receipt.\n`
   message += `- If paying Cash on Delivery / Counter Pickup, reply "CASH" in this chat.\n`
@@ -67,8 +71,10 @@ export function buildWhatsAppOrderMessage(order: OrderRecord, siteOrigin: string
 }
 
 export function openWhatsAppLink(order: OrderRecord): void {
+  const settings = useSettingsStore.getState().settings
+  const phone = settings?.whatsappNumber || MERCHANT_PHONE
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://hfc-website.vercel.app'
   const text = buildWhatsAppOrderMessage(order, origin)
-  const url = `https://wa.me/${MERCHANT_PHONE}?text=${text}`
+  const url = `https://wa.me/${phone}?text=${text}`
   window.open(url, '_blank')
 }

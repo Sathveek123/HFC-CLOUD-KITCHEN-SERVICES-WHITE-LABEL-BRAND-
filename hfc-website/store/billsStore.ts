@@ -3,11 +3,37 @@ import { persist } from 'zustand/middleware'
 import { Bill } from '@/types'
 import { OrderRecord, useOrderStore } from './orderStore'
 import { format } from 'date-fns'
+import { fetchBillsFromSupabase } from '@/lib/supabaseSync'
+
+export function mapDbBillToBill(dbBill: any, order: OrderRecord | undefined): Bill {
+  return {
+    billNo: dbBill.bill_no,
+    orderId: dbBill.order_id,
+    timestamp: new Date(dbBill.date).getTime(),
+    customerName: order ? order.customerName : dbBill.customer_name,
+    customerPhone: order ? order.phoneNumber : '',
+    orderType: order ? order.orderType : (dbBill.order_type || 'dine-in'),
+    assignedAgent: order ? order.assignedAgent : (dbBill.assigned_agent || null),
+    items: order ? order.items : [],
+    subtotal: order ? order.subtotal : Number(dbBill.subtotal || 0),
+    gst: order ? order.gst : Number(dbBill.gst || 0),
+    deliveryCharge: order ? order.deliveryCharge : Number(dbBill.delivery_charge || 0),
+    discountAmount: order ? order.discountAmount : Number(dbBill.discount_amount || 0),
+    couponCode: order ? order.couponCode || null : null,
+    total: order ? order.total : Number(dbBill.total || 0),
+    paymentMethod: order ? order.paymentMethod : (dbBill.payment_method || 'Cash'),
+    paymentStatus: dbBill.payment_status || 'unpaid',
+    orderStatus: order ? order.status : 'placed',
+    deliveryAddress: order ? order.address : undefined,
+    gpsCoordinates: order ? order.coords : null,
+  }
+}
 
 interface BillsStore {
   bills: Bill[]
   activeBill: Bill | null
   createBill: (order: OrderRecord) => Bill
+  fetchBills: () => Promise<void>
   updatePaymentStatus: (billNo: string, status: 'paid' | 'unpaid' | 'partial') => void
   getBillByOrderId: (orderId: string) => Bill | undefined
   openBillPreview: (bill: Bill) => void
@@ -67,6 +93,23 @@ export const useBillsStore = create<BillsStore>()(
         return newBill
       },
 
+      fetchBills: async () => {
+        try {
+          const dbBills = await fetchBillsFromSupabase()
+          const orders = useOrderStore.getState().orders
+          const ordersMap = new Map(orders.map(o => [o.id, o]))
+
+          const mapped = dbBills.map(dbBill => {
+            const order = ordersMap.get(dbBill.order_id)
+            return mapDbBillToBill(dbBill, order)
+          })
+
+          set({ bills: mapped })
+        } catch (err) {
+          console.error('Failed to fetch and map bills from Supabase:', err)
+        }
+      },
+
       updatePaymentStatus: (billNo: string, status: 'paid' | 'unpaid' | 'partial') => {
         const bill = get().bills.find(b => b.billNo === billNo)
         if (!bill) return
@@ -76,10 +119,10 @@ export const useBillsStore = create<BillsStore>()(
           bills: get().bills.map(b => (b.billNo === billNo ? { ...b, paymentStatus: status } : b)),
         })
 
-        // Sync to Orders Store
+        // Sync to Orders Store (which updates the database order's payment status,
+        // which then triggers the database to sync the bill payment status too!)
         try {
           const updateOrderPayStatus = useOrderStore.getState().updatePaymentStatus
-          // Cast status since orderStatus supports paid/unpaid/partial in types
           updateOrderPayStatus(bill.orderId, status as any)
         } catch (e) {
           console.error('Failed to sync payment status to orders store:', e)

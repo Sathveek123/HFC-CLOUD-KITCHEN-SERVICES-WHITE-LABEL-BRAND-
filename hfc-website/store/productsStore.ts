@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { categories as defaultCategories, menuItems as defaultMenuItems } from '@/data/menuData'
+import {
+  syncProductToSupabase,
+  deleteProductFromSupabase,
+  fetchProductsFromSupabase,
+} from '@/lib/supabaseSync'
 
 export interface ProductItem {
   id: string
@@ -40,6 +45,11 @@ interface ProductsStore {
   deleteItem: (itemId: string) => void
   toggleAvailability: (itemId: string) => void
   toggleBestseller: (itemId: string) => void
+
+  // Supabase sync
+  upsertProductFromSupabase: (item: ProductItem) => void
+  removeProductFromSupabase: (id: string) => void
+  fetchAndSyncProducts: () => Promise<void>
 
   // Selectors
   getAllItems: () => ProductItem[]
@@ -99,6 +109,9 @@ export const useProductsStore = create<ProductsStore>()(
       },
 
       deleteCategory: (id: string) => {
+        // Delete all items in this category from Supabase first
+        const toDelete = get().items.filter(item => item.categoryId === id)
+        toDelete.forEach(item => deleteProductFromSupabase(item.id))
         set({
           categories: get().categories.filter(c => c.id !== id),
           items: get().items.filter(item => item.categoryId !== id),
@@ -122,40 +135,87 @@ export const useProductsStore = create<ProductsStore>()(
           updatedAt: new Date().toISOString(),
         }
         set({ items: [...get().items, newItem] })
+        syncProductToSupabase(newItem)
       },
 
       updateItem: (itemId: string, updates) => {
-        set({
-          items: get().items.map(item =>
-            item.id === itemId
-              ? { ...item, ...updates, updatedAt: new Date().toISOString() }
-              : item
-          ),
-        })
+        const updated = get().items.map(item =>
+          item.id === itemId
+            ? { ...item, ...updates, updatedAt: new Date().toISOString() }
+            : item
+        )
+        set({ items: updated })
+        const updatedItem = updated.find(i => i.id === itemId)
+        if (updatedItem) syncProductToSupabase(updatedItem)
       },
 
       deleteItem: (itemId: string) => {
         set({ items: get().items.filter(item => item.id !== itemId) })
+        deleteProductFromSupabase(itemId)
       },
 
       toggleAvailability: (itemId: string) => {
         const item = get().items.find(i => i.id === itemId)
         if (!item) return
+        const updated = { ...item, isAvailable: !item.isAvailable, updatedAt: new Date().toISOString() }
         set({
-          items: get().items.map(i =>
-            i.id === itemId ? { ...i, isAvailable: !i.isAvailable, updatedAt: new Date().toISOString() } : i
-          ),
+          items: get().items.map(i => i.id === itemId ? updated : i),
         })
+        syncProductToSupabase(updated)
       },
 
       toggleBestseller: (itemId: string) => {
         const item = get().items.find(i => i.id === itemId)
         if (!item) return
+        const updated = { ...item, isBestseller: !item.isBestseller, updatedAt: new Date().toISOString() }
         set({
-          items: get().items.map(i =>
-            i.id === itemId ? { ...i, isBestseller: !i.isBestseller, updatedAt: new Date().toISOString() } : i
-          ),
+          items: get().items.map(i => i.id === itemId ? updated : i),
         })
+        syncProductToSupabase(updated)
+      },
+
+      // Called by Realtime listener when a product changes in Supabase
+      upsertProductFromSupabase: (item: ProductItem) => {
+        const existing = get().items.find(i => i.id === item.id)
+        if (existing) {
+          set({ items: get().items.map(i => i.id === item.id ? item : i) })
+        } else {
+          set({ items: [...get().items, item] })
+        }
+      },
+
+      // Called by Realtime listener when a product is deleted in Supabase
+      removeProductFromSupabase: (id: string) => {
+        set({ items: get().items.filter(i => i.id !== id) })
+      },
+
+      // Fetch all products from Supabase on first load (customer-facing menu)
+      fetchAndSyncProducts: async () => {
+        try {
+          const fetched = await fetchProductsFromSupabase()
+          
+          // Self-healing: if the Supabase database is missing any of our default seed items,
+          // automatically upload the missing seed items to Supabase so they are restored.
+          const fetchedIds = new Set(fetched.map(i => i.id))
+          const missingSeeds = seedItems.filter(item => !fetchedIds.has(item.id))
+          
+          if (missingSeeds.length > 0) {
+            console.log(`Seeding ${missingSeeds.length} missing default products to Supabase...`)
+            // Sync missing products sequentially
+            for (const item of missingSeeds) {
+              await syncProductToSupabase(item)
+            }
+            // Re-fetch all items after sync completes to get the updated database state
+            const updatedFetched = await fetchProductsFromSupabase()
+            set({ items: updatedFetched })
+          } else {
+            if (fetched && fetched.length > 0) {
+              set({ items: fetched })
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch and sync products from Supabase:', err)
+        }
       },
 
       getAllItems: () => get().items,

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { ShoppingBag, Clock, IndianRupee } from 'lucide-react'
 import { useOrderStore } from '@/store/orderStore'
-import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase } from '@/lib/supabaseSync'
+import { useAgentsStore } from '@/store/agentsStore'
+import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase, fetchAgentsFromSupabase } from '@/lib/supabaseSync'
 import OrdersFilterTabs from '@/components/admin/orders/OrdersFilterTabs'
 import OrdersSearchBar from '@/components/admin/orders/OrdersSearchBar'
 import OrdersTable from '@/components/admin/orders/OrdersTable'
@@ -13,21 +14,16 @@ export default function AdminOrdersListPage() {
   const markSeenByAdmin = useOrderStore(state => state.markSeenByAdmin)
   const upsertOrders = useOrderStore(state => state.upsertOrders)
   const upsertOrder = useOrderStore(state => state.upsertOrder)
+  const upsertAgents = useAgentsStore(state => state.upsertAgents)
 
-  // Realtime Supabase sync across devices — runs ONCE on mount only
+  // Fetch delivery agents to sync dropdown on mount
   useEffect(() => {
-    // 1. Initial fetch: bulk-upsert by ID (zero duplicates)
-    fetchOrdersFromSupabase().then(fetched => {
-      upsertOrders(fetched)
+    fetchAgentsFromSupabase().then(fetched => {
+      if (fetched && fetched.length > 0) {
+        upsertAgents(fetched)
+      }
     })
-
-    // 2. Realtime subscription: single-upsert (insert new, update existing if newer)
-    const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
-      upsertOrder(updatedOrder)
-    })
-
-    return () => unsubscribe()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [upsertAgents])
 
 
   // Filters State

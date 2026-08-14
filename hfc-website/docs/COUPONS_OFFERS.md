@@ -1,14 +1,15 @@
 # 🎟️ HFC Promotions System — Coupons, Offers & Reward Tiers
 
-**URL:** `/admin/coupons`  
-**File:** `app/admin/coupons/page.tsx`  
-**Stores:** `store/couponsStore.ts`, `store/promotionsStore.ts`
+> **URL:** `/admin/coupons`  
+> **File:** `app/admin/coupons/page.tsx`  
+> **Store:** `store/promotionsStore.ts` (Unified Promotions & Coupons Store)  
+> **Supabase Path:** `public.settings` row where `key = 'promotions'` (JSONB)
 
 ---
 
 ## Overview
 
-The Promotions page has **3 independent but related sections** stacked vertically on the same page. Each has its own "Add" form at the top and a results table below — consistent form-above/table-below pattern.
+The Promotions page has **3 sections** stacked vertically on the same page. Each has its own "Add" form at the top and a results table below. Any change here automatically saves to Supabase and propagates to all clients in **real-time** (< 1s).
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -31,10 +32,9 @@ The Promotions page has **3 independent but related sections** stacked verticall
 ## 🏆 Section 1 — Auto-Reward Tiers
 
 **Component:** `components/admin/coupons/RewardTierForm.tsx` + `RewardTierTable.tsx`  
-**Store:** `promotionsStore.ts` → `rewardTiers[]`
+**Store Path:** `promotionsStore.ts` → `settings.rewardTiers[]`
 
 ### What Are Reward Tiers?
-
 Automatic loyalty rewards that trigger **based on order value** — no code needed. When a customer's order total meets the minimum, the tier reward applies automatically.
 
 **Example:**
@@ -44,34 +44,21 @@ Automatic loyalty rewards that trigger **based on order value** — no code need
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| Tier Name | text | ✅ | e.g. "Silver Reward", "Gold Tier" |
 | Min Order Value (₹) | number | ✅ | Minimum subtotal to trigger reward |
-| Reward Description | text | ✅ | What the customer gets, e.g. "Free Masala Chai" |
-| Reward Type | select | ✅ | `discount` / `free-item` / `other` |
-| Reward Value | number | ✅ | Discount ₹ amount (for discount type) |
+| Reward Type | select | ✅ | `flat` / `percent` / `free-delivery` |
+| Reward Value | number | - | Discount value (e.g. 50 for ₹50 flat, 10 for 10%) |
+| Valid Days | number | ✅ | Validity duration in days |
 | Active | toggle | - | Whether tier is live |
 
-### Reward Tiers Table Columns
-
-| Column | Notes |
-|--------|-------|
-| Tier Name | |
-| Min Order | ₹ value |
-| Reward | Description |
-| Type | Badge (discount/free-item/other) |
-| Status | Active / Inactive toggle |
-| Actions | Edit inline, Delete with confirm |
-
-### `RewardTier` Type (promotionsStore)
+### `RewardTier` Type
 
 ```typescript
 interface RewardTier {
   id: string
-  name: string
-  minOrderValue: number
-  rewardDescription: string
-  rewardType: 'discount' | 'free-item' | 'other'
-  rewardValue: number        // ₹ discount value (0 for free-item/other)
+  minOrderAmount: number
+  rewardType: 'flat' | 'percent' | 'free-delivery'
+  rewardValue: number | null
+  validDays: number
   isActive: boolean
   createdAt: string
 }
@@ -82,178 +69,130 @@ interface RewardTier {
 ## 🎫 Section 2 — Coupons
 
 **Component:** `components/admin/coupons/CouponForm.tsx` + `CouponTable.tsx`  
-**Store:** `couponsStore.ts` → `coupons[]`
+**Store Path:** `promotionsStore.ts` → `settings.coupons[]`
 
 ### What Are Coupons?
-
-**Manually created discount codes** that customers type in at checkout. Validated against rules: order type, minimum value, expiry, and usage limits.
+**Manually created discount codes** that customers type in at checkout. Validated in real-time against rules: minimum value, expiry, and usage limits.
 
 ### Add Coupon Form Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| Coupon Code | text | ✅ | e.g. `WELCOME20`, `FLAT50` (auto-uppercase) |
-| Discount Type | select | ✅ | `percentage` or `flat` |
-| Discount Value | number | ✅ | e.g. 20 (for 20%) or 50 (for ₹50 flat) |
-| Min Order Value (₹) | number | ✅ | Minimum subtotal required |
-| Max Uses | number | - | Leave blank for unlimited |
-| Applicable Order Types | checkboxes | ✅ | Dine-In / Takeaway / Delivery |
-| Expiry Date | date | - | Leave blank for no expiry |
+| Coupon Code | text | ✅ | e.g. `WELCOME20`, `HFC50` (auto-uppercase) |
+| Discount Type | select | ✅ | `percent` / `flat` / `free-delivery` |
+| Discount Value | number | - | e.g. 20 (for 20%) or 50 (for ₹50 flat) |
+| Max Discount Cap | number | - | Max cap for percentage discounts (e.g. max ₹100 off) |
+| Min Order Value (₹) | number | ✅ | Minimum subtotal required to apply |
+| Usage Limit | number | - | Leave blank for unlimited |
+| Applicable Phone | text | - | Lock coupon to a specific customer's phone number |
+| Valid From | date | - | Start date of coupon validity |
+| Valid Until | date | - | Expiry date |
 | Active | toggle | - | Enable/disable coupon |
 
-### Coupons Table Columns
-
-| Column | Notes |
-|--------|-------|
-| Code | Monospace bold |
-| Discount | "20% off" or "₹50 flat" |
-| Min Order | ₹ threshold |
-| Uses | `5 / 100` used/max format |
-| Order Types | Pills for applicable types |
-| Expiry | Date or "No expiry" |
-| Status | Active/Inactive toggle |
-| Actions | Edit, Delete |
-
-### `Coupon` Type (couponsStore)
+### `Coupon` Type
 
 ```typescript
 interface Coupon {
   id: string
   code: string
-  discountType: 'percentage' | 'flat'
-  discountValue: number
-  minOrderValue: number
-  maxUses: number | null          // null = unlimited
+  discountType: 'percent' | 'flat' | 'free-delivery'
+  discountValue: number | null
+  maxDiscountCap: number | null
+  minOrderAmount: number
+  usageLimit: number | null
   usedCount: number
+  validFrom: string | null
+  validUntil: string | null
   isActive: boolean
-  applicableOrderTypes: ('dine-in' | 'takeaway' | 'delivery')[]
-  expiresAt: string | null        // ISO date string or null
+  applicableCustomerPhone: string | null
   createdAt: string
 }
 ```
 
 ### Coupon Validation Logic
 
-**`couponsStore.validateCoupon(code, subtotal, orderType)`**
+**`promotionsStore.getValidCoupon(code, orderTotal)`**
 
-Validation steps (in order):
+Validation steps:
 1. Find coupon by code (case-insensitive)
 2. Check `isActive === true`
-3. Check `usedCount < maxUses` (or `maxUses === null`)
-4. Check `new Date() < new Date(expiresAt)` (or no expiry)
-5. Check `subtotal >= minOrderValue`
-6. Check `orderType in applicableOrderTypes`
+3. Check `usedCount < usageLimit` (or `usageLimit === null`)
+4. Check `new Date() >= new Date(validFrom)` (if validFrom is set)
+5. Check `new Date() <= new Date(validUntil)` (if validUntil is set)
+6. Check `orderTotal >= minOrderAmount`
 
-Discount calculation:
-```typescript
-if (discountType === 'percentage') {
-  discountAmount = Math.round((discountValue / 100) * subtotal)
-} else {
-  discountAmount = discountValue
-}
-```
-
-Returns: `{ isValid: boolean, discountAmount: number, error?: string }`
-
-### Coupon Usage Counter
-
-After a successful order placement:
-```typescript
-couponsStore.incrementUsedCount(code)
-```
-
-This increments `coupon.usedCount` by 1. When `usedCount >= maxUses`, the coupon becomes unavailable.
+Returns: `{ valid: boolean, coupon?: Coupon, error?: string }`
 
 ---
 
 ## 🎁 Section 3 — Offers
 
 **Component:** `components/admin/coupons/OfferForm.tsx` + `OfferTable.tsx`  
-**Store:** `promotionsStore.ts` → `offers[]`
+**Store Path:** `promotionsStore.ts` → `settings.offers[]`
 
 ### What Are Offers?
+**Visual promotional banners** shown to customers on the website (e.g., "Buy 2 Get 1 Free", "Family Bundle Deal"). These are informational promotions highlightable on the customer home page.
 
-**Visual promotional cards** shown to customers on the website (e.g., "Buy 2 Get 1 Free", "Family Bundle Deal"). Unlike coupons, these don't have an automatic discount mechanism — they're informational promotions the admin creates to highlight deals.
-
-### Add Offer Form Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| Offer Title | text | ✅ | e.g. "Weekend Special — Buy 2 Get 1 Free" |
-| Description | textarea | ✅ | Full offer details |
-| Offer Type | select | ✅ | `free-item` / `bundle` / `bogo` / `other` |
-| Min Order Value (₹) | number | - | Minimum order to apply offer |
-| Valid From | date | - | Start date |
-| Valid To | date | - | End date |
-| Offer Image URL | text | - | Banner image URL |
-| Active | toggle | - | Show/hide on website |
-
-### Offers Table Columns
-
-| Column | Notes |
-|--------|-------|
-| Title | Offer name |
-| Type | Badge (free-item/bundle/bogo/other) |
-| Min Order | ₹ threshold or "No minimum" |
-| Valid Period | "Aug 1 – Aug 31" or "No expiry" |
-| Status | Active/Inactive toggle |
-| Actions | Edit, Delete |
-
-### `Offer` Type (promotionsStore)
+### `Offer` Type
 
 ```typescript
 interface Offer {
   id: string
+  offerType: 'free-item' | 'bundle-discount' | 'happy-hour' | 'first-order'
   title: string
-  description: string
-  offerType: 'free-item' | 'bundle' | 'bogo' | 'other'
-  minOrderValue: number
-  isActive: boolean
+  freeItemId: string | null
+  minOrderAmount: number
   validFrom: string | null
-  validTo: string | null
-  imageUrl?: string
+  validUntil: string | null
+  isActive: boolean
   createdAt: string
 }
 ```
 
 ---
 
-## 🛒 Customer-Side Integration
+## 📡 Real-Time WebSockets Synchronization
 
-### Coupon at Checkout (CartDrawer)
+Promotions are fully real-time enabled. Any update in the Admin Coupons page updates the database and broadcasts to all clients:
 
-```
-Customer enters code → [Apply] button
-    ↓
-couponsStore.validateCoupon(code, subtotal, orderType)
-    ↓
-Success: discount shown in totals, "Remove" option
-Failure: error message in red
-    ↓
-On order placement: couponsStore.incrementUsedCount(code)
-Order saved with: { couponCode: "WELCOME20", discountAmount: 50 }
-```
+### 1. Admin Page Hook (`app/admin/coupons/page.tsx`)
+```typescript
+useEffect(() => {
+  // Fetch initial promotions on mount
+  usePromotionsStore.getState().fetchAndSyncPromotions()
 
-### Display on Order Tracker
+  // Subscribe to real-time changes
+  const unsub = subscribeToSettingRealtime('promotions', (val) => {
+    if (val) usePromotionsStore.getState().setPromotionsFromSupabase(val)
+  })
 
-If a coupon was applied, the tracker shows:
-```
-Discount (WELCOME20)     -₹50
+  return () => unsub()
+}, [])
 ```
 
-### WhatsApp Message
+### 2. Customer Homepage Hook (`app/page.tsx`)
+Updates available offers, active rewards, and valid coupons live on the home page and Cart Drawer.
+```typescript
+useEffect(() => {
+  usePromotionsStore.getState().fetchAndSyncPromotions()
 
-If coupon applied, the WhatsApp order message includes:
-```
-🎟 Coupon Applied: WELCOME20 — Saved ₹50
+  const unsub = subscribeToSettingRealtime('promotions', (val) => {
+    if (val) usePromotionsStore.getState().setPromotionsFromSupabase(val)
+  })
+
+  return () => unsub()
+}, [])
 ```
 
 ---
 
-## 📊 Promotions Summary (All 3 Sections)
+## 🛒 Customer-Side Checkout Integration
 
-| Feature | Code Required | Auto-Apply | Visual on Site | Admin Table |
-|---------|--------------|-----------|----------------|-------------|
-| Reward Tier | No | Yes (by value) | Planned | ✅ |
-| Coupon | Yes | At checkout | No (code entry) | ✅ |
-| Offer | No | No | Yes (banner) | ✅ |
+### Coupon Validation in Cart Drawer (`CartDrawer.tsx`)
+When a customer inputs a coupon code and clicks Apply:
+1. `promotionsStore.getValidCoupon(code, subtotal)` is called.
+2. If valid, the cart calculates the discount amount:
+   - For `flat`: `discount = coupon.discountValue`
+   - For `percent`: `discount = Math.min((coupon.discountValue / 100) * subtotal, coupon.maxDiscountCap || Infinity)`
+   - For `free-delivery`: `discount = deliveryCharge` (sets delivery charge to 0)
+3. Upon order placement, `promotionsStore.incrementCouponUsage(code)` is called to increment `usedCount` in Supabase.

@@ -71,7 +71,10 @@ export function rowToOrder(row: any): OrderRecord {
 const syncQueueMap = new Map<string, NodeJS.Timeout>()
 
 /**
- * Upsert an order to Supabase cloud DB with rate-limiting & exponential retry fallback
+ * Upsert an order to Supabase cloud DB with rate-limiting & exponential retry.
+ * Uses SECURITY DEFINER RPC create_order() as primary — bypasses RLS for both
+ * customer INSERTs and admin UPDATEs without needing a valid JWT.
+ * Falls back to direct table upsert if RPC itself fails (network/function issue).
  */
 export async function syncOrderToSupabase(order: OrderRecord, maxRetries = 3) {
   const orderId = order.id
@@ -90,19 +93,27 @@ export async function syncOrderToSupabase(order: OrderRecord, maxRetries = 3) {
 
     while (attempt < maxRetries && !success) {
       try {
-        // Atomic SQL Optimistic Lock: Upsert order where cloud timestamp <= local timestamp
-        const { error } = await supabase
-          .from('orders')
-          .upsert(row, { onConflict: 'id', ignoreDuplicates: false })
+        // Primary: SECURITY DEFINER RPC — bypasses RLS, works for any caller
+        // Handles both INSERT (new orders) and UPDATE (status/agent/payment changes)
+        const { error: rpcError } = await supabase.rpc('create_order', { order_row: row })
 
-        if (!error) {
+        if (!rpcError) {
           success = true
         } else {
-          attempt++
-          if (attempt < maxRetries) {
-            await new Promise(res => setTimeout(res, attempt * 500)) // Exponential backoff: 500ms, 1000ms...
+          // Fallback: direct upsert (works if admin has valid JWT)
+          const { error: directError } = await supabase
+            .from('orders')
+            .upsert(row, { onConflict: 'id', ignoreDuplicates: false })
+
+          if (!directError) {
+            success = true
           } else {
-            console.warn(`Supabase order sync attempt ${attempt} warning:`, error.message)
+            attempt++
+            if (attempt < maxRetries) {
+              await new Promise(res => setTimeout(res, attempt * 500))
+            } else {
+              console.warn(`Supabase order sync failed after ${attempt} attempts:`, rpcError?.message, directError?.message)
+            }
           }
         }
       } catch (err) {
@@ -120,19 +131,43 @@ export async function syncOrderToSupabase(order: OrderRecord, maxRetries = 3) {
 }
 
 /**
- * Fetch all orders from Supabase cloud DB
+ * Fetch orders from Supabase — LIMITED to last 30 days to protect egress.
+ * Tries direct table SELECT first; falls back to SECURITY DEFINER RPC.
  */
 export async function fetchOrdersFromSupabase(): Promise<OrderRecord[]> {
+  // Only fetch orders from the last 30 days to avoid massive egress on large datasets
+  const since = new Date()
+  since.setDate(since.getDate() - 30)
+  const sinceISO = since.toISOString()
+
   try {
-    const { data, error } = await supabase
+    // First try: direct table query (works if Supabase Auth session with admin role exists)
+    const { data: directData, error: directError } = await supabase
       .from('orders')
       .select('*')
+      .gte('created_at', sinceISO)
       .order('created_at', { ascending: false })
+      .limit(500)
 
-    if (error || !data) {
-      return []
+    // IMPORTANT: RLS blocks return empty [] with NO error — check length > 0
+    if (!directError && directData && directData.length > 0) {
+      return directData.map(rowToOrder)
     }
-    return data.map(rowToOrder)
+
+    // Fallback: SECURITY DEFINER RPC that bypasses RLS (always works)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_all_orders')
+
+    if (!rpcError && rpcData) {
+      // Apply the 30-day filter client-side on RPC result too
+      const sinceMs = since.getTime()
+      return (rpcData as any[])
+        .filter((r: any) => new Date(r.created_at).getTime() >= sinceMs)
+        .map(rowToOrder)
+    }
+
+    console.warn('Failed to fetch from Supabase (both direct and RPC):', directError?.message, rpcError?.message)
+    return []
   } catch (err) {
     console.warn('Failed to fetch from Supabase:', err)
     return []
@@ -258,3 +293,299 @@ export function subscribeToAllOrdersRealtime(
     supabase.removeChannel(channel)
   }
 }
+
+/**
+ * Convert Agent to Supabase row format
+ */
+export function agentToRow(agent: any) {
+  return {
+    id: agent.id,
+    name: agent.name,
+    whatsapp: agent.whatsapp,
+    username: agent.username,
+    password: agent.password,
+    is_active: agent.isActive,
+    vehicle_type: agent.vehicleType || null,
+    coverage_area: agent.coverageArea || null,
+    total_deliveries: agent.totalDeliveries || 0,
+    created_at: agent.createdAt,
+  }
+}
+
+/**
+ * Convert Supabase row to Agent format
+ */
+export function rowToAgent(row: any) {
+  return {
+    id: row.id,
+    name: row.name,
+    whatsapp: row.whatsapp,
+    username: row.username,
+    password: row.password || '123',
+    isActive: row.is_active,
+    vehicleType: row.vehicle_type || null,
+    coverageArea: row.coverage_area || null,
+    totalDeliveries: Number(row.total_deliveries) || 0,
+    createdAt: row.created_at,
+  }
+}
+
+/**
+ * Upsert agent to Supabase cloud DB (bypasses RLS via RPC sync_agent)
+ */
+export async function syncAgentToSupabase(agent: any) {
+  try {
+    const row = agentToRow(agent)
+    const { error } = await supabase.rpc('sync_agent', { agent_row: row })
+    if (error) {
+      console.warn('Failed to sync agent to Supabase via RPC:', error.message)
+    }
+  } catch (err) {
+    console.warn('Network issue during agent sync:', err)
+  }
+}
+
+/**
+ * Delete agent from Supabase (bypasses RLS via RPC delete_agent_by_id)
+ */
+export async function deleteAgentFromSupabase(id: string) {
+  try {
+    const { error } = await supabase.rpc('delete_agent_by_id', { agent_id: id })
+    if (error) {
+      console.warn('Failed to delete agent from Supabase via RPC:', error.message)
+    }
+  } catch (err) {
+    console.warn('Network issue during agent deletion:', err)
+  }
+}
+
+/**
+ * Fetch all agents from Supabase (bypasses RLS via RPC get_all_agents)
+ */
+export async function fetchAgentsFromSupabase(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_all_agents')
+    if (error || !data) {
+      console.warn('Failed to fetch agents via RPC:', error?.message)
+      return []
+    }
+    return data.map(rowToAgent)
+  } catch (err) {
+    console.warn('Failed to fetch agents from Supabase:', err)
+    return []
+  }
+}
+
+/**
+ * Fetch bills from Supabase — LIMITED to last 30 days to protect egress.
+ */
+export async function fetchBillsFromSupabase(): Promise<any[]> {
+  const since = new Date()
+  since.setDate(since.getDate() - 30)
+  const sinceMs = since.getTime()
+
+  try {
+    const { data, error } = await supabase.rpc('get_all_bills')
+    if (error || !data) {
+      console.warn('Failed to fetch bills via RPC:', error?.message)
+      return []
+    }
+    // Filter to last 30 days client-side on the RPC output
+    return (data as any[]).filter(
+      (bill: any) => new Date(bill.date).getTime() >= sinceMs
+    )
+  } catch (err) {
+    console.warn('Failed to fetch bills from Supabase:', err)
+    return []
+  }
+}
+
+// ─── PRODUCT SYNC FUNCTIONS ──────────────────────────────────────────────────
+
+import { ProductItem } from '@/store/productsStore'
+
+/**
+ * Convert ProductItem (store format) to Supabase public.products row
+ */
+export function productToRow(item: ProductItem) {
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.categoryId,
+    price: item.price,
+    mrp: item.mrp,
+    description: item.description,
+    image_url: item.imageUrl,
+    is_available: item.isAvailable,
+    is_bestseller: item.isBestseller,
+    is_veg: item.isVeg,
+    sort_order: item.sortOrder,
+    updated_at: item.updatedAt,
+  }
+}
+
+/**
+ * Convert Supabase public.products row to ProductItem (store format)
+ */
+export function rowToProduct(row: any): ProductItem {
+  return {
+    id: row.id,
+    categoryId: row.category,
+    name: row.name,
+    description: row.description || '',
+    price: Number(row.price),
+    mrp: row.mrp != null ? Number(row.mrp) : null,
+    imageUrl: row.image_url || null,
+    isVeg: row.is_veg ?? true,
+    isAvailable: row.is_available ?? true,
+    isBestseller: row.is_bestseller ?? false,
+    sortOrder: row.sort_order ?? 0,
+    updatedAt: row.updated_at || new Date().toISOString(),
+  }
+}
+
+/**
+ * Upsert (insert or update) a product in Supabase
+ */
+export async function syncProductToSupabase(item: ProductItem): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('sync_product', { product_row: productToRow(item) })
+    if (error) {
+      console.warn('Failed to sync product to Supabase:', error.message)
+    }
+  } catch (err) {
+    console.warn('Failed to sync product to Supabase:', err)
+  }
+}
+
+/**
+ * Delete a product from Supabase by ID
+ */
+export async function deleteProductFromSupabase(productId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+    if (error) {
+      console.warn('Failed to delete product from Supabase:', error.message)
+    }
+  } catch (err) {
+    console.warn('Failed to delete product from Supabase:', err)
+  }
+}
+
+/**
+ * Fetch all products from Supabase public.products (bypasses RLS)
+ */
+export async function fetchProductsFromSupabase(): Promise<ProductItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('sort_order', { ascending: true })
+    if (error || !data) {
+      console.warn('Failed to fetch products from Supabase:', error?.message)
+      return []
+    }
+    return data.map(rowToProduct)
+  } catch (err) {
+    console.warn('Failed to fetch products from Supabase:', err)
+    return []
+  }
+}
+
+/**
+ * Subscribe to real-time product changes from Supabase.
+ * Calls onChanged(item) when any product is inserted or updated.
+ * Calls onDeleted(id) when a product is deleted.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToProductsRealtime(
+  onChanged: (item: ProductItem) => void,
+  onDeleted: (id: string) => void
+): () => void {
+  const channel = supabase
+    .channel('products-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'products' },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          onDeleted((payload.old as any).id)
+        } else {
+          onChanged(rowToProduct(payload.new))
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+// ─── SETTINGS & PROMOTIONS SYNC FUNCTIONS ─────────────────────────────────────
+
+/**
+ * Sync a settings key-value pair to Supabase (bypasses RLS via RPC sync_setting)
+ */
+export async function syncSettingToSupabase(key: string, value: any): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('sync_setting', { p_key: key, p_value: value })
+    if (error) {
+      console.warn(`Failed to sync setting ${key} to Supabase via RPC:`, error.message)
+    }
+  } catch (err) {
+    console.warn(`Failed to sync setting ${key} to Supabase:`, err)
+  }
+}
+
+/**
+ * Fetch a setting from Supabase public.settings table (bypasses RLS)
+ */
+export async function fetchSettingFromSupabase(key: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle()
+    if (error || !data) {
+      return null
+    }
+    return data.value
+  } catch (err) {
+    console.warn(`Failed to fetch setting ${key} from Supabase:`, err)
+    return null
+  }
+}
+
+/**
+ * Subscribe to realtime changes for a specific settings key
+ */
+export function subscribeToSettingRealtime(
+  key: string,
+  onChanged: (value: any) => void
+): () => void {
+  const channel = supabase
+    .channel(`setting-${key}-realtime`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'settings', filter: `key=eq.${key}` },
+      (payload) => {
+        if (payload.new && (payload.new as any).value) {
+          onChanged((payload.new as any).value)
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+
+
+

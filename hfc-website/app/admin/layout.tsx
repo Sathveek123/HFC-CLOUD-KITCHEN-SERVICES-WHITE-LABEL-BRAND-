@@ -8,12 +8,16 @@ import AdminAuthGuard from '@/components/admin/layout/AdminAuthGuard'
 import { useOrderStore } from '@/store/orderStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import toast from 'react-hot-toast'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import AdminOfflineFallback from '@/components/admin/layout/AdminOfflineFallback'
+
+
+import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase } from '@/lib/supabaseSync'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const orders = useOrderStore(state => state.orders)
-  const markAsSeen = useOrderStore(state => state.markAsSeen)
   const settings = useSettingsStore(state => state.settings)
 
   // 1. Keyboard Shortcuts Listener
@@ -44,74 +48,91 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [router])
 
-  // 2. Play Notification Sound via Web Audio API
+  // 2. Play Notification Sound via Web Audio API (High-Fidelity double-tone bell chime)
   const playChime = () => {
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
       if (!AudioContextClass) return
       const ctx = new AudioContextClass()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 880
-      gain.gain.setValueAtTime(0.3, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.6)
+      
+      // Tone 1: D5 (587.33Hz)
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime)
+      gain1.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+      osc1.start(ctx.currentTime)
+      osc1.stop(ctx.currentTime + 0.3)
+
+      // Tone 2: A5 (880.00Hz) slightly delayed
+      setTimeout(() => {
+        try {
+          const osc2 = ctx.createOscillator()
+          const gain2 = ctx.createGain()
+          osc2.connect(gain2)
+          gain2.connect(ctx.destination)
+          osc2.frequency.setValueAtTime(880.00, ctx.currentTime)
+          gain2.gain.setValueAtTime(0.3, ctx.currentTime)
+          gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+          osc2.start(ctx.currentTime)
+          osc2.stop(ctx.currentTime + 0.6)
+        } catch (err) {
+          // ignore potential audio state failures in background context
+        }
+      }, 120)
     } catch (e) {
       console.warn('Web Audio Context blocked or not supported by browser:', e)
     }
   }
 
-  // 3. New Orders Polling Checker (every 15s)
+  // 3. New Orders Realtime Subscriber (WebSockets)
   useEffect(() => {
     if (pathname === '/admin/login') return
 
-    const checkNewOrders = () => {
-      const fiveMinsAgo = Date.now() - 5 * 60 * 1000
-      const unseenNewOrders = orders.filter(
-        o => o.status === 'placed' && !o.seenByAdmin && new Date(o.createdAt).getTime() > fiveMinsAgo
-      )
-
-      if (unseenNewOrders.length > 0) {
-        // Always trigger notification toast
-        playChime()
-
-        unseenNewOrders.forEach(order => {
-          toast.success(
-            (t) => (
-              <div className="flex flex-col gap-1 font-body text-[13px]">
-                <strong className="font-brand font-bold text-brand-black">
-                  🔔 New Order Received!
-                </strong>
-                <span>
-                  Customer: {order.customerName} (₹{order.total.toLocaleString('en-IN')})
-                </span>
-                <button
-                  onClick={() => {
-                    toast.dismiss(t.id)
-                    router.push(`/admin/orders/${order.id}`)
-                  }}
-                  className="text-brand-red font-semibold text-left underline mt-1"
-                >
-                  View Order →
-                </button>
-              </div>
-            ),
-            { duration: 8000 }
-          )
-          markAsSeen(order.id)
-        })
+    // Hydro-fetch initial orders to hydrate layout cache
+    fetchOrdersFromSupabase().then(fetched => {
+      if (fetched && fetched.length > 0) {
+        useOrderStore.getState().upsertOrders(fetched)
       }
-    }
+    })
 
-    // Initial check and set interval
-    checkNewOrders()
-    const poll = setInterval(checkNewOrders, 15000)
+    const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
+      // Check if it's a brand new order (status === 'placed' and not already in store)
+      const exists = useOrderStore.getState().orders.some(o => o.id === updatedOrder.id)
+      if (!exists && updatedOrder.status === 'placed') {
+        playChime()
+        toast.success(
+          (t) => (
+            <div className="flex flex-col gap-1 font-body text-[13px]">
+              <strong className="font-brand font-bold text-brand-black">
+                🔔 New Order Received!
+              </strong>
+              <span>
+                Customer: {updatedOrder.customerName} (₹{updatedOrder.total.toLocaleString('en-IN')})
+              </span>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id)
+                  router.push(`/admin/orders/${updatedOrder.id}`)
+                }}
+                className="text-brand-red font-semibold text-left underline mt-1"
+              >
+                View Order →
+              </button>
+            </div>
+          ),
+          { duration: 8000 }
+        )
+      }
 
-    return () => clearInterval(poll)
-  }, [orders, markAsSeen, pathname, router])
+      // Upsert order globally
+      useOrderStore.getState().upsertOrder(updatedOrder)
+    })
+
+    return () => unsubscribe()
+  }, [pathname, router])
 
   const isLoginPage = pathname === '/admin/login'
 
@@ -127,10 +148,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Right Core Content Area */}
           <div className="flex flex-col flex-1 overflow-hidden">
             <AdminTopbar />
-            <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#FAFAFA]">{children}</main>
+            <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#FAFAFA]">
+              <ErrorBoundary fallback={<AdminOfflineFallback />}>
+                {children}
+              </ErrorBoundary>
+            </main>
           </div>
         </div>
       )}
     </AdminAuthGuard>
+
   )
 }

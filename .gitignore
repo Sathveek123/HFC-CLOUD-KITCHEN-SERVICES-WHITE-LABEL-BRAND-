@@ -21,3 +21,5 @@ hfc-website/.env.local
 .kilo/
 .kilocode/
 .gemini/
+
+.vercel

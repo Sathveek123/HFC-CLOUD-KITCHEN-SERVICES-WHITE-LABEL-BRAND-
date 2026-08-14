@@ -83,6 +83,13 @@ export const useOrderStore = create<OrderStore>()(
       setHasHydrated: (val) => set({ _hasHydrated: val }),
 
       addOrder: (newOrder) => {
+        // Prevent duplicate order insertion (e.g. double click on checkout confirmation)
+        const existing = get().orders.find(o => o.id === newOrder.id)
+        if (existing) {
+          console.warn('Order already exists, skipping duplicate add:', newOrder.id)
+          return
+        }
+
         const now = new Date()
         const order: OrderRecord = {
           ...newOrder,
@@ -163,11 +170,10 @@ export const useOrderStore = create<OrderStore>()(
         const order = get().orders.find(o => o.id === id)
         if (!order) return
 
-        const isDeliveryOrder = order.orderType === 'delivery'
         const isDeliveredStatus = status === 'delivered'
         const isCashPayment = order.paymentMethod === 'Cash'
         const isUnpaid = order.paymentStatus !== 'paid'
-        const autoPayment = isDeliveredStatus && isDeliveryOrder && isCashPayment && isUnpaid
+        const autoPayment = isDeliveredStatus && isCashPayment && isUnpaid
 
         const updatedOrder: OrderRecord = {
           ...order,

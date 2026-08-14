@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useBillsStore } from '@/store/billsStore'
 import { useAgentsStore } from '@/store/agentsStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { exportBillsToCSV } from '@/lib/billExport'
 import OrderStatusBadge from '@/components/admin/orders/OrderStatusBadge'
 import BillPreviewModal from '@/components/admin/bills/BillPreviewModal'
@@ -30,6 +31,7 @@ import { Bill } from '@/types'
 export default function AdminBillsPage() {
   const bills = useBillsStore(state => state.bills)
   const updatePaymentStatus = useBillsStore(state => state.updatePaymentStatus)
+  const fetchBills = useBillsStore(state => state.fetchBills)
   const agents = useAgentsStore(state => state.agents)
 
   // 1. FILTER FIELDS STATE
@@ -52,13 +54,14 @@ export default function AdminBillsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
 
-  // Set default dates on mount (From: 1st of month, To: today)
+  // Set default dates and fetch bills on mount
   useEffect(() => {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
     setFromDate(format(firstDay, 'yyyy-MM-dd'))
     setToDate(format(now, 'yyyy-MM-dd'))
-  }, [])
+    fetchBills()
+  }, [fetchBills])
 
   const handleResetFilters = () => {
     const now = new Date()
@@ -220,8 +223,10 @@ export default function AdminBillsPage() {
 
   // Print a single bill directly in print style
   const handlePrintSingle = (bill: Bill) => {
+    const settings = useSettingsStore.getState().settings
+    const upiId = settings?.upiId || '9912799855@okbizaxis'
     const timeFormatted = format(new Date(bill.timestamp), 'dd MMM yyyy, h:mm aa')
-    const upiLink = `upi://pay?pa=9912799855@okbizaxis&pn=HFC&am=${bill.total}&cu=INR`
+    const upiLink = `upi://pay?pa=${upiId}&pn=HFC&am=${bill.total}&cu=INR`
     
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
@@ -236,16 +241,15 @@ export default function AdminBillsPage() {
             .right { text-align: right; }
             .divider { border-top: 1px dashed #000; margin: 15px 0; }
             .meta, .totals { font-size: 12px; line-height: 1.5; }
-            table { width: 100%; font-size: 12px; margin: 12px 0; }
-            th, td { text-align: left; padding: 4px 0; }
-            .footer { text-align: center; margin-top: 40px; font-size: 11px; font-style: italic; }
+            .items { font-size: 13px; line-height: 1.6; }
+            .footer { text-align: center; font-size: 11px; margin-top: 30px; border-top: 1px dashed #000; padding-top: 15px; }
+            h2 { margin: 5px 0; }
           </style>
         </head>
         <body>
           <div class="center">
-            <strong>HFC CONSULTANCY SERVICES</strong><br/>
-            <small>Your Growth, Our Responsibility. All Within Your Budget.</small><br/>
-            <strong>TAX INVOICE</strong>
+            <h2>HFC Cloud Kitchen</h2>
+            <p style="font-size: 11px; margin: 5px 0;">Premium F&B Consulting & Kitchen</p>
           </div>
           <div class="divider"></div>
           <div class="meta">

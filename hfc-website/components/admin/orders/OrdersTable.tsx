@@ -16,7 +16,13 @@ interface OrdersTableProps {
 
 export default function OrdersTable({ orders }: OrdersTableProps) {
   if (orders.length === 0) {
-    return <EmptyState message="No orders match the selected filters." />
+    return (
+      <div className="bg-white border border-brand-border rounded-[12px] p-12 text-center font-body text-[14px] text-brand-muted flex flex-col items-center justify-center space-y-2 shadow-sm">
+        <span className="text-[32px]">📁</span>
+        <span className="font-brand font-semibold text-brand-black">No Orders Found</span>
+        <span>No orders match the selected filters.</span>
+      </div>
+    )
   }
 
   return (

@@ -12,8 +12,38 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    checkSession()
-    setChecking(false)
+    let cancelled = false
+
+    const instantLocalCheck = (): boolean => {
+      try {
+        const stored = localStorage.getItem('hfc_admin_local_auth')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed && parsed.authenticated === true) return true
+        }
+      } catch (_) {}
+      try {
+        const match = document.cookie.match(/(^| )hfc_admin_auth=([^;]+)/)
+        if (match && decodeURIComponent(match[2]) === '1') return true
+      } catch (_) {}
+      try {
+        if (sessionStorage.getItem('hfc_admin_auth') === '1') return true
+      } catch (_) {}
+      return false
+    }
+
+    const init = async () => {
+      const localOk = instantLocalCheck()
+      if (localOk) {
+        ;(useAdminAuthStore as any).setState({ isAuthenticated: true })
+      }
+
+      await checkSession()
+      if (!cancelled) setChecking(false)
+    }
+    init()
+
+    return () => { cancelled = true }
   }, [checkSession])
 
   useEffect(() => {

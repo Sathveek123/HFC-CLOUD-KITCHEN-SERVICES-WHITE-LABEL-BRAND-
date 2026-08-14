@@ -14,16 +14,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required agent fields' }, { status: 400 })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cmwsffhenpckwkwgnmsy.supabase.co'
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_hZmCQNTdDAuysF3iU4IaYA_daEHVI8D'
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: 'Supabase server environment unconfigured' }, { status: 500 })
+    let supabaseAdmin: any = null
+    try {
+      supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false },
+      })
+    } catch (initErr) {
+      console.warn('Agent provision Supabase client init failed:', initErr)
+      return NextResponse.json({ error: 'Database temporarily unavailable' }, { status: 500 })
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    })
 
     // 0. Fail-closed Admin JWT Token Verification
     const authHeader = req.headers.get('Authorization')

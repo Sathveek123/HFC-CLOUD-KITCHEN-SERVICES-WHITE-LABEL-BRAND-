@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { syncSettingToSupabase, fetchSettingFromSupabase } from '@/lib/supabaseSync'
 
 export interface RewardTier {
   id: string
@@ -61,6 +62,10 @@ interface PromotionsStore {
   toggleOfferActive: (id: string) => void
   deleteOffer: (id: string) => void
 
+  // Supabase sync actions
+  fetchAndSyncPromotions: () => Promise<void>
+  setPromotionsFromSupabase: (promoData: { rewardTiers?: RewardTier[]; coupons?: Coupon[]; offers?: Offer[] }) => void
+
   // Selectors
   getActiveOffers: () => Offer[]
   getValidCoupon: (code: string, orderTotal: number) => { valid: boolean; coupon?: Coupon; error?: string }
@@ -68,49 +73,70 @@ interface PromotionsStore {
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
+// Helper to push all local state to Supabase JSONB setting
+const syncLocalToSupabase = async (state: any) => {
+  const payload = {
+    rewardTiers: state.rewardTiers,
+    coupons: state.coupons,
+    offers: state.offers,
+  }
+  await syncSettingToSupabase('promotions', payload)
+}
+
 export const usePromotionsStore = create<PromotionsStore>()(
   persist(
     (set, get) => ({
       rewardTiers: [],
-      coupons: [],
+      coupons: [
+        { id: 'cp-1', code: 'HFC50', discountType: 'percent', discountValue: 50, minOrderAmount: 300, maxDiscountCap: 150, usageLimit: 100, usedCount: 0, validFrom: '2026-08-01', validUntil: '2026-12-31', isActive: true, applicableCustomerPhone: null, createdAt: new Date().toISOString() },
+        { id: 'cp-2', code: 'FREEBY', discountType: 'free-delivery', discountValue: null, minOrderAmount: 250, maxDiscountCap: null, usageLimit: 500, usedCount: 0, validFrom: '2026-08-01', validUntil: '2026-12-31', isActive: true, applicableCustomerPhone: null, createdAt: new Date().toISOString() }
+      ],
       offers: [],
 
       addRewardTier: (tier) => {
         const newTier: RewardTier = { ...tier, id: genId(), createdAt: new Date().toISOString() }
-        set({ rewardTiers: [...get().rewardTiers, newTier] })
+        const updated = [...get().rewardTiers, newTier]
+        set({ rewardTiers: updated })
+        syncLocalToSupabase({ ...get(), rewardTiers: updated })
       },
 
       toggleRewardTierActive: (id) => {
-        set({
-          rewardTiers: get().rewardTiers.map(t => t.id === id ? { ...t, isActive: !t.isActive } : t),
-        })
+        const updated = get().rewardTiers.map(t => t.id === id ? { ...t, isActive: !t.isActive } : t)
+        set({ rewardTiers: updated })
+        syncLocalToSupabase({ ...get(), rewardTiers: updated })
       },
 
       deleteRewardTier: (id) => {
-        set({ rewardTiers: get().rewardTiers.filter(t => t.id !== id) })
+        const updated = get().rewardTiers.filter(t => t.id !== id)
+        set({ rewardTiers: updated })
+        syncLocalToSupabase({ ...get(), rewardTiers: updated })
       },
 
       addCoupon: (coupon) => {
         const newCoupon: Coupon = { ...coupon, id: genId(), usedCount: 0, createdAt: new Date().toISOString() }
-        set({ coupons: [...get().coupons, newCoupon] })
+        const updated = [...get().coupons, newCoupon]
+        set({ coupons: updated })
+        syncLocalToSupabase({ ...get(), coupons: updated })
       },
 
       toggleCouponActive: (id) => {
-        set({
-          coupons: get().coupons.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c),
-        })
+        const updated = get().coupons.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c)
+        set({ coupons: updated })
+        syncLocalToSupabase({ ...get(), coupons: updated })
       },
 
       deleteCoupon: (id) => {
-        set({ coupons: get().coupons.filter(c => c.id !== id) })
+        const updated = get().coupons.filter(c => c.id !== id)
+        set({ coupons: updated })
+        syncLocalToSupabase({ ...get(), coupons: updated })
       },
 
       incrementCouponUsage: (code) => {
-        set({
-          coupons: get().coupons.map(c =>
-            c.code.toUpperCase() === code.toUpperCase() ? { ...c, usedCount: c.usedCount + 1 } : c
-          ),
-        })
+        const updated = get().coupons.map(c =>
+          c.code.toUpperCase() === code.toUpperCase() ? { ...c, usedCount: c.usedCount + 1 } : c
+        )
+        set({ coupons: updated })
+        syncLocalToSupabase({ ...get(), coupons: updated })
       },
 
       isCodeAvailable: (code) => {
@@ -119,17 +145,50 @@ export const usePromotionsStore = create<PromotionsStore>()(
 
       addOffer: (offer) => {
         const newOffer: Offer = { ...offer, id: genId(), createdAt: new Date().toISOString() }
-        set({ offers: [...get().offers, newOffer] })
+        const updated = [...get().offers, newOffer]
+        set({ offers: updated })
+        syncLocalToSupabase({ ...get(), offers: updated })
       },
 
       toggleOfferActive: (id) => {
-        set({
-          offers: get().offers.map(o => o.id === id ? { ...o, isActive: !o.isActive } : o),
-        })
+        const updated = get().offers.map(o => o.id === id ? { ...o, isActive: !o.isActive } : o)
+        set({ offers: updated })
+        syncLocalToSupabase({ ...get(), offers: updated })
       },
 
       deleteOffer: (id) => {
-        set({ offers: get().offers.filter(o => o.id !== id) })
+        const updated = get().offers.filter(o => o.id !== id)
+        set({ offers: updated })
+        syncLocalToSupabase({ ...get(), offers: updated })
+      },
+
+      // Fetch promotions configuration from Supabase
+      fetchAndSyncPromotions: async () => {
+        try {
+          const promoData = await fetchSettingFromSupabase('promotions')
+          if (promoData) {
+            set({
+              rewardTiers: promoData.rewardTiers || [],
+              coupons: promoData.coupons || [],
+              offers: promoData.offers || [],
+            })
+          } else {
+            // First time load: seed existing default coupons to Supabase
+            console.log('No promotions found in Supabase. Seeding defaults...')
+            await syncLocalToSupabase(get())
+          }
+        } catch (err) {
+          console.warn('Failed to fetch promotions from Supabase:', err)
+        }
+      },
+
+      // Update state when realtime change is received
+      setPromotionsFromSupabase: (promoData) => {
+        set({
+          rewardTiers: promoData.rewardTiers || [],
+          coupons: promoData.coupons || [],
+          offers: promoData.offers || [],
+        })
       },
 
       getActiveOffers: () => {

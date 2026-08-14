@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useMemo } from 'react'
+import React, { useState, useRef, useMemo, useEffect } from 'react'
 import {
   Truck, MessageCircle, Eye, EyeOff, Pencil, Trash2,
   AlertTriangle, X, Check
@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import { useAgentsStore, Agent } from '@/store/agentsStore'
 import { useOrderStore } from '@/store/orderStore'
+import { fetchAgentsFromSupabase } from '@/lib/supabaseSync'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -301,6 +302,16 @@ export default function AdminAgentsPage() {
   const updateAgent = useAgentsStore(state => state.updateAgent)
 
   const orders = useOrderStore(state => state.orders)
+  const upsertAgents = useAgentsStore(state => state.upsertAgents)
+
+  // Sync agents from Supabase on mount
+  useEffect(() => {
+    fetchAgentsFromSupabase().then(fetched => {
+      if (fetched && fetched.length > 0) {
+        upsertAgents(fetched)
+      }
+    })
+  }, [upsertAgents])
 
   // Active agent count
   const activeCount = useMemo(() => agents.filter(a => a.isActive).length, [agents])

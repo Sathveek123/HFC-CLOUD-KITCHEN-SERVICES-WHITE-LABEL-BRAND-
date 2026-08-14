@@ -21,12 +21,14 @@
 ```
 
 ### Data Layer Principles
-1. **Primary System of Record**: **Supabase PostgreSQL Cloud DB** is the authoritative single source of truth for all business entities (`orders`, `products`, `agents`, `bills`, `coupons`, `settings`).
+1. **Primary System of Record**: **Supabase PostgreSQL Cloud DB** is the authoritative single source of truth for all business entities (`orders`, `products`, `agents`, `bills`, `settings`).
 2. **Client Cache Layer**: **Zustand + localStorage** acts strictly as an optimistic cache for instant UI rendering.
 3. **Cross-Device Real-Time Sync**:
    - **Customer Tracker**: Subscribes to single-order updates via `subscribeToOrderRealtime(orderId)`.
    - **Admin Orders Panel**: Subscribes to all order changes via `subscribeToAllOrdersRealtime()`.
    - **Delivery Agent Portal**: Subscribes to all order changes via `subscribeToAllOrdersRealtime()`, updating rider screens live on any mobile device.
+   - **Customer Menu**: Subscribes to product changes via `subscribeToProductsRealtime()`.
+   - **Branding & Checkout Settings**: Subscribes to settings updates via `subscribeToSettingRealtime('site_settings', cb)`.
 
 ---
 
@@ -42,43 +44,6 @@
    - Admin can read all billing records.
    - Delivery Agents can **ONLY** read bills tied to orders assigned to their own name (`order_id IN (SELECT id FROM orders WHERE assigned_agent = auth.jwt() -> 'user_metadata' ->> 'agent_name')`).
 
--- 1. ORDERS TABLE (Admin reads all; Delivery Agents read assigned orders only)
-CREATE POLICY "Public create order" ON public.orders FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Scoped staff select orders" ON public.orders FOR SELECT 
-USING (
-  (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  OR (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'agent'
-    AND assigned_agent = (auth.jwt() -> 'user_metadata' ->> 'agent_name')
-  )
-);
-
-CREATE POLICY "Admin full update orders" ON public.orders FOR UPDATE 
-  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin')
-  WITH CHECK ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-
-CREATE POLICY "Agent update assigned orders only" ON public.orders FOR UPDATE 
-  USING (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'agent'
-    AND assigned_agent = (auth.jwt() -> 'user_metadata' ->> 'agent_name')
-  )
-  WITH CHECK (assigned_agent = (auth.jwt() -> 'user_metadata' ->> 'agent_name'));
-
-CREATE POLICY "Admin delete orders only" ON public.orders FOR DELETE 
-  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-
-```sql
--- SECURITY DEFINER SINGLE ORDER LOOKUP FUNCTION
-CREATE OR REPLACE FUNCTION public.get_order_by_id(p_order_id TEXT)
-RETURNS SETOF public.orders
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  SELECT * FROM public.orders WHERE id = p_order_id LIMIT 1;
-$$;
-```
-
 ---
 
 ## 🔑 Fail-Closed Agent Provisioning API Route (`/api/admin/agents/provision`)
@@ -88,7 +53,7 @@ The server provisioning endpoint is engineered with **Fail-Closed Security**:
 1. **Missing Authorization Header** → Immediate `401 Unauthorized`.
 2. **Invalid or Expired JWT Token** → Immediate `401 Unauthorized`.
 3. **Non-Admin User Role** → Immediate `403 Forbidden`.
-4. **Valid Admin Bearer Token** → Execution proceeds to create agent credentials in Supabase Auth.
+4. **Valid Admin Bearer Token** → Execution proceeds to create agent credentials in Supabase Auth using the service role token server-side.
 
 ---
 
@@ -111,8 +76,8 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 ### 1. `orders` Table
 | Column | Type | Constraints / Details |
 |--------|------|----------------------|
-| `id` | TEXT | Primary Key (e.g. `HFC-F6B776C7`) |
-| `customer_name` | TEXT | Customer full name (XSS sanitized) |
+| `id` | TEXT PK | e.g. `HFC-F6B776C7` |
+| `customer_name` | TEXT | Customer name (sanitized) |
 | `phone_number` | TEXT | 10-digit mobile number |
 | `order_type` | TEXT | `dine-in` \| `takeaway` \| `delivery` |
 | `address` | TEXT | Delivery address |
@@ -121,12 +86,12 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 | `coords` | JSONB | `{ lat: number, lng: number }` |
 | `items` | JSONB | `[{ id, name, price, quantity }]` |
 | `subtotal` | NUMERIC(10,2) | Item subtotal |
-| `gst` | NUMERIC(10,2) | 5% GST amount |
+| `gst` | NUMERIC(10,2) | GST split taxes amount |
 | `delivery_charge` | NUMERIC(10,2) | Delivery fee |
 | `discount_amount` | NUMERIC(10,2) | Applied coupon discount |
 | `coupon_code` | TEXT | Coupon code used |
 | `total` | NUMERIC(10,2) | Final payable total |
-| `payment_method` | TEXT | `Cash` \| `UPI` \| `Online` \| `Card` |
+| `payment_method` | TEXT | Cash / UPI / Online / Card |
 | `payment_status` | TEXT | `unpaid` \| `paid` \| `partial` |
 | `status` | TEXT | `placed` \| `accepted` \| `ready` \| `picked-up` \| `delivered` \| `rejected` \| `cancelled` |
 | `assigned_agent` | TEXT | Assigned delivery rider name |
@@ -140,106 +105,59 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 ### 2. `products` Table
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | TEXT | Primary Key |
+| `id` | TEXT PK | Primary Key |
 | `name` | TEXT | Product dish name |
 | `category` | TEXT | Starters / Mains / Beverages / Desserts |
 | `price` | NUMERIC(10,2) | Price in ₹ |
+| `mrp` | NUMERIC(10,2) | Strike-through MSRP price |
 | `description` | TEXT | Dish description |
 | `image_url` | TEXT | Product image URL |
 | `is_available` | BOOLEAN | Availability toggle |
+| `is_bestseller` | BOOLEAN | Bestseller badge |
+| `is_veg` | BOOLEAN | Veg/non-veg flag |
+| `sort_order` | INTEGER | Sorting order value |
+| `updated_at` | TIMESTAMPTZ | Modification timestamp |
 
 ### 3. `agents` Table
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | TEXT | Primary Key |
+| `id` | TEXT PK | Primary Key |
 | `name` | TEXT | Rider display name |
-| `whatsapp` | TEXT | Mobile contact |
-| `username` | TEXT | Unique login username |
-| `password_hash` | TEXT | Login credential |
+| `whatsapp` | TEXT | Mobile contact with country code |
+| `username` | TEXT UNIQUE | Unique login username |
 | `is_active` | BOOLEAN | Off-duty / On-duty toggle |
-| `vehicle_type` | TEXT | Bike / Scooter / Bicycle |
-| `coverage_area` | TEXT | Delivery zone |
-| `total_deliveries` | INTEGER | Delivery counter |
+| `vehicle_type` | TEXT | Bike / Scooter / Bicycle / On-foot |
+| `coverage_area` | TEXT | Delivery zone description |
+| `total_deliveries` | INTEGER | Completed deliveries counter |
 
 ### 4. `bills` Table
 | Column | Type | Description |
 |--------|------|-------------|
-| `bill_no` | TEXT | Primary Key (e.g. `BILL-20260812-001`) |
+| `bill_no` | TEXT PK | Primary Key (e.g. `BILL-20260814-001`) |
 | `order_id` | TEXT | Foreign Key -> `orders.id` |
 | `customer_name` | TEXT | Customer name |
 | `subtotal`, `gst`, `total` | NUMERIC(10,2) | Breakdown amounts |
 | `payment_status` | TEXT | `paid` \| `unpaid` |
+| `date` | TIMESTAMPTZ | Invoice timestamp |
+| `created_at` | TIMESTAMPTZ | Row creation timestamp |
 
-### 5. `coupons` Table
+### 5. `settings` Table
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | TEXT | Primary Key |
-| `code` | TEXT | Unique uppercase coupon code |
-| `discount_type` | TEXT | `percentage` \| `flat` |
-| `discount_value` | NUMERIC(10,2) | Value (e.g. 20% or ₹50) |
-| `min_order_value` | NUMERIC(10,2) | Minimum order threshold |
-| `max_uses` | INTEGER | Usage cap |
-| `used_count` | INTEGER | Redemptions counter |
-
-### 6. `settings` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | TEXT | Primary Key (`hfc-settings`) |
-| `site_name` | TEXT | Branding name |
-| `phone`, `whatsapp_number` | TEXT | Contact details |
-| `gst_percent` | NUMERIC(5,2) | Tax % |
-| `delivery_fee`, `free_delivery_above` | NUMERIC(10,2) | Delivery settings |
-| `data` | JSONB | Additional configuration payload |
+| `key` | TEXT PK | Primary Key (e.g. `site_settings`, `promotions`) |
+| `value` | JSONB | Dynamic JSONB payload containing fields |
+| `updated_at` | TIMESTAMPTZ | Last sync timestamp |
 
 ---
 
 ## 📡 Real-Time WebSockets Setup
 
-Realtime is enabled on the `orders` table via Postgres publication:
+Realtime is enabled on `orders`, `products`, and `settings` tables via Postgres publication:
 
 ```sql
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' 
-          AND schemaname = 'public' 
-          AND tablename = 'orders'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
-    END IF;
-END $$;
-```
-
-### Client Subscription (`lib/supabaseSync.ts`)
-
-```typescript
-export function subscribeToOrderRealtime(
-  orderId: string,
-  onUpdate: (updatedOrder: OrderRecord) => void
-) {
-  const channel = supabase
-    .channel(`order-live-${orderId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'orders',
-        filter: `id=eq.${orderId}`,
-      },
-      (payload) => {
-        if (payload.new) {
-          onUpdate(rowToOrder(payload.new))
-        }
-      }
-    )
-    .subscribe()
-
-  return () => {
-    supabase.removeChannel(channel)
-  }
-}
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
 ```
 
 ---
@@ -258,6 +176,7 @@ If network drops or API requests fail:
 ### 3. Egress Bandwidth Efficiency
 - Average payload per order update: ~400 Bytes.
 - Expected monthly egress at 1,000 orders/month: **~2.5 MB** (< 0.05% of Supabase 5GB limit).
+- All bulk fetching queries are limited to a 30-day window and capped at 500 records.
 
 ### 4. Automatic WebSocket Disconnection
-Order tracker pages unsubscribe and close the WebSocket connection on component unmount (`return () => unsubscribeRealtime()`), preventing connection leaks.
+Order tracker, menu, and admin pages unsubscribe and close the WebSocket connection on component unmount to prevent connection leaks.

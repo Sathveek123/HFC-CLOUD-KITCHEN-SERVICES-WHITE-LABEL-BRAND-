@@ -1,120 +1,125 @@
 # 🗄️ HFC State Management — Zustand & Supabase Architecture
 
-## Source of Truth Reconciliation
-
-- **Supabase Cloud Database (PostgreSQL)** is the **Primary System of Record (Single Source of Truth)**.
-- **Zustand + localStorage** acts strictly as an **Optimistic Client Cache & Offline Layer**.
-- All mutations update local state instantly for 0ms UI lag, then push to Supabase via `lib/supabaseSync.ts`.
-- All three surfaces (Customer Tracker, Admin Panel, Delivery Agent Portal) subscribe to Supabase Realtime WebSockets (`subscribeToAllOrdersRealtime` / `subscribeToOrderRealtime`) for sub-second cross-device sync.
+> All stores use `zustand/middleware/persist` (localStorage) as an **optimistic cache**.  
+> **Supabase PostgreSQL** is the Single Source of Truth. Every mutation syncs to Supabase.  
+> Every surface subscribes to **Supabase Realtime WebSockets** for sub-second cross-device updates.
 
 ---
 
-## 📦 orderStore.ts
+## Architecture Summary
 
-**Key:** `hfc-orders`  
-**Role:** Client optimistic store & cache for orders
+```
+Admin Action (e.g. "Add Coupon")
+  ↓
+Zustand store mutation (instant local UI update)
+  ↓
+syncSettingToSupabase() / syncProductToSupabase() etc.
+  ↓
+Supabase PostgreSQL (upsert via SECURITY DEFINER RPC)
+  ↓
+Supabase Realtime broadcast (postgres_changes event)
+  ↓
+All connected clients (customers, agents, admins) updated < 1 second
+```
+
+---
+
+## 📦 `orderStore.ts`
+
+**localStorage Key:** `hfc-orders`  
+**Supabase Table:** `public.orders`  
+**Realtime:** `subscribeToAllOrdersRealtime()` on admin + agent pages  
 
 ### `OrderRecord` Type
 
 ```typescript
 interface OrderRecord {
-  id: string                  // Collision-proof via crypto.randomUUID() e.g. "HFC-F6B776C7"
-  customerName: string
-  phoneNumber: string          // Canonical phone field (sanitized)
+  id: string                  // e.g. "HFC-F6B776C7" (crypto.randomUUID based)
+  customerName: string        // XSS sanitized
+  phoneNumber: string         // 10-digit
   orderType: 'dine-in' | 'takeaway' | 'delivery'
-  address?: string             // Canonical address field (sanitized)
-  landmark?: string            // Sanitized landmark
+  address?: string
+  landmark?: string
   deliveryArea?: string | null
-  coords?: { lat: number; lng: number }  // Canonical GPS field
+  coords?: { lat: number; lng: number }
   items: { id: string; name: string; price: number; quantity: number }[]
   subtotal: number
   gst: number
-  deliveryCharge: number       // Required, default 0
-  discountAmount: number       // Required, default 0
+  deliveryCharge: number
+  discountAmount: number
   couponCode?: string | null
   total: number
-  paymentMethod: 'Cash' | 'UPI' | 'Online' | 'Card'  // Required, default 'Cash'
+  paymentMethod: 'Cash' | 'UPI' | 'Online' | 'Card'
   paymentStatus: 'unpaid' | 'paid' | 'partial'
-  status: OrderStatus
-  assignedAgent: string | null  // Required, default null
-  seenByAdmin: boolean          // Required, default false
-  isRegularCustomer: boolean    // Required, default false
+  status: 'placed' | 'accepted' | 'ready' | 'picked-up' | 'delivered' | 'rejected' | 'cancelled'
+  assignedAgent: string | null
+  seenByAdmin: boolean
+  isRegularCustomer: boolean
   notes?: string | null
   createdAt: string           // ISO string
-  updatedAt: string           // ISO string (always set on write)
-  timestamp: number           // Unix ms (always set on write)
+  updatedAt: string           // ISO string (updated on every write)
+  timestamp: number           // Unix milliseconds
 }
-
-type OrderStatus = 'placed' | 'accepted' | 'ready' | 'picked-up' | 'delivered' | 'rejected' | 'cancelled'
 ```
-
-### Store Helper Utilities
-
-| Utility | Description |
-|---------|-------------|
-| `generateOrderId()` | Generates an 8-char crypto-random uppercase ID (`HFC-F6B776C7`) using `crypto.randomUUID()` with a safe `Math.random()` string fallback for non-HTTPS/older engines. |
-| `sanitizeInput(str)` | Escapes HTML entity characters (`<`, `>`, `"`, `'`) for XSS defense-in-depth. |
 
 ### Actions
 
-| Action | Signature | Notes |
-|--------|-----------|-------|
-| `addOrder` | `(order) => void` | Also creates bill; populates defaults for required fields |
-| `updateOrderStatus` | `(id, status) => void` | COD auto-pay built in for `delivered` (delivery orders only) |
-| `updatePaymentStatus` | `(id, paymentStatus) => void` | Syncs to billsStore |
-| `updatePaymentMethod` | `(id, method) => void` | |
-| `assignAgent` | `(id, agentName \| null) => void` | |
-| `cancelOrder` | `(id) => void` | Sets status to `cancelled` |
-| `markSeenByAdmin` | `(ids: string[]) => void` | Batch mark seen |
-| `markAsSeen` | `(id) => void` | Single mark seen |
-| `addToRegularCustomers` | `(id) => void` | Writes to `hfc-regular-customers` localStorage |
-| `duplicateOrder` | `(id) => OrderRecord \| undefined` | Creates copy with new collision-proof ID + `placed` status |
-| `clearOrders` | `() => void` | Wipe all orders |
-| `getOrderById` | `(id) => OrderRecord \| undefined` | Used by order tracker polling |
-| `setHasHydrated` | `(val: boolean) => void` | Called by `onRehydrateStorage` when store is ready |
+| Action | Supabase Sync | Notes |
+|--------|--------------|-------|
+| `addOrder(order)` | `create_order(row)` RPC | Idempotency guard: skips if ID already exists |
+| `updateOrderStatus(id, status)` | `syncOrderStatusAtomic()` | COD auto-pay for delivery orders |
+| `updatePaymentStatus(id, status)` | `syncOrderStatusAtomic()` | Syncs to bills table too |
+| `updatePaymentMethod(id, method)` | `syncOrderStatusAtomic()` | |
+| `assignAgent(id, agentName)` | `syncOrderStatusAtomic()` | |
+| `cancelOrder(id)` | `syncOrderStatusAtomic()` | |
+| `fetchOrdersFromSupabase()` | SELECT (last 30 days, max 500) | On admin/agent mount |
+| `subscribeToAllOrdersRealtime()` | WebSocket channel | Real-time cross-device |
 
-### COD Auto-Pay Guard (Inside `updateOrderStatus`)
+### COD Auto-Pay Guard
 
 ```typescript
-updateOrderStatus(id, status) {
-  const order = get().orders.find(o => o.id === id)
-  if (!order) return
-
-  // COD auto-pay guard:
-  // ONLY auto-flip to 'paid' for DELIVERY orders (cash collected at door).
-  // Dine-in and takeaway are counter payments — admin marks paid separately.
-  const isDeliveryOrder = order.orderType === 'delivery'
-  const isDeliveredStatus = status === 'delivered'
-  const isCashPayment = order.paymentMethod === 'Cash'
-  const isUnpaid = order.paymentStatus !== 'paid'
-  const autoPayment = isDeliveredStatus && isDeliveryOrder && isCashPayment && isUnpaid
-
-  // If auto-pay triggered, also flip paymentStatus to 'paid' and sync to billsStore
+// When status becomes 'delivered' for DELIVERY orders with Cash payment:
+if (status === 'delivered' && orderType === 'delivery' && paymentMethod === 'Cash' && paymentStatus !== 'paid') {
+  paymentStatus = 'paid'  // auto-flip
+  // also syncs to billsStore
 }
+// Guard: dine-in and takeaway counter payments are NOT auto-flipped
 ```
 
-### Archive System
-- Orders are capped at **500 in active store**
-- When exceeding 500, oldest 100 are moved to `hfc-orders-archive` (localStorage)
-- Archive capped at 1000 entries
+### Duplicate Prevention
+
+```typescript
+// In addOrder() — idempotency guard:
+const existing = get().orders.find(o => o.id === order.id)
+if (existing) return  // skip insert if already exists
+```
+
+### Egress Protection (30-day window)
+
+```typescript
+// fetchOrdersFromSupabase() only fetches last 30 days:
+const since = new Date()
+since.setDate(since.getDate() - 30)
+.gte('created_at', sinceISO)
+.limit(500)
+```
 
 ---
 
-## 👤 agentsStore.ts
+## 👤 `agentsStore.ts`
 
-**Key:** `hfc-agents`  
-**Role:** Delivery agent accounts (created by admin, used for agent login)
+**localStorage Key:** `hfc-agents`  
+**Supabase Table:** `public.agents`  
 
 ### `Agent` Type
 
 ```typescript
 interface Agent {
   id: string
-  name: string            // Display name (used in order.assignedAgent)
-  whatsapp: string        // Numeric with country code: "919876543210"
-  username: string        // Unique lowercase login credential
-  password: string        // Plain text (internal tool only)
-  isActive: boolean       // false = Off Duty, hidden from assignment dropdowns
+  name: string              // Display name (used in order.assignedAgent)
+  whatsapp: string          // Full number with country code "919876543210"
+  username: string          // Unique login username
+  isActive: boolean         // Off-duty = hidden from assignment dropdowns
   vehicleType: 'bike' | 'bicycle' | 'scooter' | 'on-foot' | null
   coverageArea: string | null
   createdAt: string
@@ -122,34 +127,27 @@ interface Agent {
 }
 ```
 
-### Seed Agents (Pre-Loaded)
-
-```typescript
-const seedAgents = [
-  { id: 'ag-1', name: 'Rajesh Kumar', username: 'rajesh', password: 'raj123', ... },
-  { id: 'ag-2', name: 'Suresh Raina', username: 'suresh', password: 'sur123', ... },
-]
-```
+> ⚠️ **No `password` or `password_hash` field** — credentials are stored exclusively in Supabase Auth (`auth.users`). Agent passwords are managed via `/api/admin/agents/provision`.
 
 ### Actions
 
 | Action | Notes |
 |--------|-------|
-| `addAgent` | Creates new agent with auto ID |
+| `addAgent(agent)` | Also calls `/api/admin/agents/provision` to create Supabase Auth user |
 | `updateAgent(id, updates)` | Patch any fields |
 | `deleteAgent(id)` | Remove permanently |
-| `toggleAgentActive(id)` | Flip isActive boolean |
-| `incrementDeliveries(id)` | +1 to totalDeliveries |
+| `toggleAgentActive(id)` | Flip `isActive` boolean |
+| `incrementDeliveries(id)` | +1 to `totalDeliveries` |
 | `isUsernameAvailable(username, excludeId?)` | Uniqueness check |
-| `getActiveAgents()` | Returns only `isActive: true` agents |
+| `getActiveAgents()` | Returns only `isActive: true` agents (shown in assignment dropdown) |
 | `getAgentByUsername(username)` | Used in auth flow |
 
 ---
 
-## 🔑 agentAuthStore.ts
+## 🔑 `agentAuthStore.ts`
 
-**Key:** None (not persisted — uses `sessionStorage`)  
-**Role:** Agent authentication session management
+**Persistence:** `localStorage` key `hfc-agent-session` (agent ID string)  
+> ✅ **localStorage** — session persists across tab close, browser restart, and page refresh.
 
 ### State
 
@@ -164,37 +162,46 @@ const seedAgents = [
 
 | Action | Notes |
 |--------|-------|
-| `login(username, password)` | Returns `{ success, error? }` |
-| `logout()` | Clears sessionStorage + state |
-| `checkSession()` | Restores from sessionStorage on mount |
+| `login(username, password)` | Calls Supabase Auth → saves agent ID to localStorage |
+| `logout()` | Clears `localStorage.hfc-agent-session` + resets state |
+| `checkSession()` | On mount: reads `localStorage`, re-validates agent is still active |
 | `getLoggedInAgent()` | Returns full Agent object from agentsStore |
 
----
+### Login Flow
 
-## 🔑 adminAuthStore.ts
-
-**Key:** None (not persisted)  
-**Role:** Admin authentication session
-
-### Credentials
-```typescript
-const ADMIN_USERNAME = 'admin'
-const ADMIN_PASSWORD = 'hfc2024'
+```
+agent.login(username, password)
+  → authenticateAgentSupabase(username, password)  ← Supabase Auth signInWithPassword()
+  → localStorage.setItem('hfc-agent-session', agent.id)
+  → set({ isAuthenticated: true })
 ```
 
 ---
 
-## 🛒 cartStore.ts
+## 🔑 `adminAuthStore.ts`
 
-**Key:** `hfc-cart`  
-**Role:** Shopping cart (customer side)
+**Persistence:** Supabase Auth session (JWT stored by Supabase SDK — persists across refreshes)
+
+### Authentication
+Admin authentication is managed entirely by **Supabase Auth**:
+- Login calls `authenticateAdminSupabase(username, password)` which signs in via `supabase.auth.signInWithPassword()`.
+- Session validity is verified by checking `user_metadata.role === 'admin'` on the returned JWT.
+- Credentials are configured in the **Supabase Auth dashboard** — no passwords are stored in source code.
+
+---
+
+
+## 🛒 `cartStore.ts`
+
+**localStorage Key:** `hfc-cart`  
+**No Supabase sync** — cart is customer session-only.
 
 ### State
 
 ```typescript
 {
   items: CartItem[]    // { id, name, price, quantity }
-  isOpen: boolean      // Drawer visibility
+  isOpen: boolean      // Cart drawer visibility
 }
 ```
 
@@ -203,139 +210,166 @@ const ADMIN_PASSWORD = 'hfc2024'
 | Action | Notes |
 |--------|-------|
 | `addItem(product)` | Adds or increments quantity |
-| `removeItem(id)` | Removes item entirely |
+| `removeItem(id)` | Removes entirely |
 | `updateQuantity(id, qty)` | Set specific quantity (0 = remove) |
 | `clearCart()` | Empty cart after order placed |
 | `openCart()` / `closeCart()` | Drawer toggle |
-| `getSubtotal()` | Sum of item.price × item.quantity |
+| `getSubtotal()` | Sum of `item.price × item.quantity` |
 
 ---
 
-## 📋 productsStore.ts
+## 📋 `productsStore.ts`
 
-**Key:** `hfc-products`  
-**Role:** Menu product catalog
+**localStorage Key:** `hfc-products`  
+**Supabase Table:** `public.products`  
+**Realtime:** `subscribeToProductsRealtime()` on `MenuSection.tsx`  
 
-### `Product` Type
+### `ProductItem` Type
 
 ```typescript
-interface Product {
+interface ProductItem {
   id: string
+  categoryId: string        // Category slug e.g. "starters"
   name: string
-  category: string     // e.g. "Starters", "Mains", "Beverages"
+  description: string
   price: number
-  description?: string
-  imageUrl?: string
-  isAvailable: boolean
+  mrp: number | null        // Strike-through MRP price
+  imageUrl: string | null
+  isVeg: boolean
+  isAvailable: boolean      // Toggle hide/show from customer menu
+  isBestseller: boolean     // Shows bestseller badge
+  sortOrder: number         // Display order
+  updatedAt: string         // ISO string
+}
+```
+
+### Actions
+
+| Action | Supabase Sync | Notes |
+|--------|--------------|-------|
+| `addItem(categoryId, item)` | `sync_product(row)` RPC | Triggers realtime broadcast |
+| `updateItem(itemId, updates)` | `sync_product(row)` RPC | Live on customer menu |
+| `deleteItem(itemId)` | Direct DELETE | |
+| `toggleAvailability(itemId)` | `sync_product(row)` RPC | Instant hide/show on menu |
+| `toggleBestseller(itemId)` | `sync_product(row)` RPC | |
+| `fetchAndSyncProducts()` | Direct SELECT + self-healer | On mount |
+| `upsertProductFromSupabase(item)` | — | Called by realtime listener |
+| `removeProductFromSupabase(id)` | — | Called by realtime listener |
+
+### Self-Healing Seeder
+
+```typescript
+fetchAndSyncProducts: async () => {
+  const fetched = await fetchProductsFromSupabase()
+  const fetchedIds = new Set(fetched.map(i => i.id))
+  const missingSeeds = seedItems.filter(item => !fetchedIds.has(item.id))
+  
+  if (missingSeeds.length > 0) {
+    // Auto-upload any missing default menu items to Supabase
+    for (const item of missingSeeds) {
+      await syncProductToSupabase(item)
+    }
+  }
+}
+```
+
+---
+
+## 🎟️ `promotionsStore.ts` (Coupons, Offers & Reward Tiers)
+
+**localStorage Key:** `hfc-promotions`  
+**Supabase Storage:** `public.settings` row where `key = 'promotions'` (JSONB)  
+**Realtime:** `subscribeToSettingRealtime('promotions', cb)` on homepage + admin coupons page  
+
+### Types
+
+```typescript
+interface Coupon {
+  id: string
+  code: string                              // Uppercase e.g. "HFC50"
+  discountType: 'percent' | 'flat' | 'free-delivery'
+  discountValue: number | null              // null for free-delivery
+  maxDiscountCap: number | null             // Max cap for percent discounts
+  minOrderAmount: number                    // Minimum cart total
+  usageLimit: number | null                 // null = unlimited
+  usedCount: number
+  validFrom: string | null                  // ISO date
+  validUntil: string | null                 // ISO date
+  isActive: boolean
+  applicableCustomerPhone: string | null    // Lock to specific phone number
+  createdAt: string
+}
+
+interface RewardTier {
+  id: string
+  minOrderAmount: number
+  rewardType: 'flat' | 'percent' | 'free-delivery'
+  rewardValue: number | null
+  validDays: number
+  isActive: boolean
+  createdAt: string
+}
+
+interface Offer {
+  id: string
+  offerType: 'free-item' | 'bundle-discount' | 'happy-hour' | 'first-order'
+  title: string
+  freeItemId: string | null
+  minOrderAmount: number
+  validFrom: string | null
+  validUntil: string | null
+  isActive: boolean
   createdAt: string
 }
 ```
 
 ### Actions
-- `addProduct`, `updateProduct`, `deleteProduct`
-- `toggleAvailability(id)` — immediate hide/show from customer menu
-- `getProductsByCategory()` — for category tab filtering
 
----
+| Action | Supabase Sync | Notes |
+|--------|--------------|-------|
+| `addCoupon(coupon)` | `sync_setting('promotions', {...})` | Live on customer checkout |
+| `toggleCouponActive(id)` | `sync_setting('promotions', {...})` | |
+| `deleteCoupon(id)` | `sync_setting('promotions', {...})` | |
+| `incrementCouponUsage(code)` | `sync_setting('promotions', {...})` | Called on order placement |
+| `addRewardTier(tier)` | `sync_setting('promotions', {...})` | |
+| `addOffer(offer)` | `sync_setting('promotions', {...})` | |
+| `fetchAndSyncPromotions()` | `fetchSettingFromSupabase('promotions')` | On mount |
+| `setPromotionsFromSupabase(data)` | — | Called by realtime listener |
+| `getValidCoupon(code, total)` | — | Used by CartDrawer |
+| `getActiveOffers()` | — | Returns currently active offers |
 
-## 🎟️ couponsStore.ts
-
-**Key:** `hfc-coupons`  
-**Role:** Discount coupon management
-
-### `Coupon` Type
-
-```typescript
-interface Coupon {
-  id: string
-  code: string           // e.g. "WELCOME20"
-  discountType: 'percentage' | 'flat'
-  discountValue: number  // e.g. 20 (%) or 50 (₹)
-  minOrderValue: number  // Minimum subtotal required
-  maxUses: number | null // null = unlimited
-  usedCount: number
-  isActive: boolean
-  applicableOrderTypes: ('dine-in' | 'takeaway' | 'delivery')[]
-  expiresAt: string | null
-  createdAt: string
-}
-```
-
-### Key Action: `validateCoupon`
+### Coupon Validation (`getValidCoupon`)
 
 ```typescript
-validateCoupon(code, subtotal, orderType) => {
-  isValid: boolean
-  discountAmount: number
-  error?: string
+getValidCoupon(code, orderTotal) => {
+  // Checks: code exists, isActive, not expired, usageLimit not reached, minOrderAmount met
+  // Returns: { valid: boolean, coupon?: Coupon, error?: string }
 }
-```
-
-Checks:
-1. Code exists and `isActive`
-2. `usedCount < maxUses` (or unlimited)
-3. `subtotal >= minOrderValue`
-4. Not expired
-5. `orderType` in `applicableOrderTypes`
-6. Calculates: percentage → `(discountValue/100) * subtotal`, flat → `discountValue`
-
----
-
-## 🎁 promotionsStore.ts
-
-**Key:** `hfc-promotions`  
-**Role:** Reward tiers and promotional offers
-
-### Types
-
-```typescript
-interface RewardTier {
-  id: string
-  name: string
-  minOrderValue: number
-  rewardDescription: string
-  rewardType: 'discount' | 'free-item' | 'other'
-  rewardValue: number
-  isActive: boolean
-}
-
-interface Offer {
-  id: string
-  title: string
-  description: string
-  offerType: 'free-item' | 'bundle' | 'bogo' | 'other'
-  minOrderValue: number
-  isActive: boolean
-  validFrom: string | null
-  validTo: string | null
-  imageUrl?: string
-}
+// CartDrawer then calculates discount amount based on coupon.discountType
 ```
 
 ---
 
-## 🧾 billsStore.ts
+## 🧾 `billsStore.ts`
 
-**Key:** `hfc-bills`  
-**Role:** Invoices/bills linked to orders
+**localStorage Key:** `hfc-bills`  
+**Supabase Table:** `public.bills`  
 
 ### Auto-Creation
-Every `orderStore.addOrder()` call automatically creates a corresponding bill via:
-```typescript
-const { useBillsStore } = require('./billsStore')
-useBillsStore.getState().createBill(order)
-```
+Bills are created automatically via a Supabase SQL trigger (`auto_create_bill`) that fires on every `INSERT` to `public.orders`.
 
 ### Sync
-- `orderStore.updatePaymentStatus()` → syncs to linked bill
-- `orderStore.updateOrderStatus('delivered')` on COD → syncs to linked bill
+- Supabase trigger `sync_bill_payment_status` fires on `UPDATE` to `orders.payment_status`, keeping the corresponding bill row in sync.
+- `fetchBillsFromSupabase()` is called on mount in `AdminBillsPage` (last 30 days only).
+- The `get_all_bills()` SECURITY DEFINER RPC bypasses RLS for admin reads.
 
 ---
 
-## ⚙️ settingsStore.ts
+## ⚙️ `settingsStore.ts`
 
-**Key:** `hfc-settings`  
-**Role:** Business configuration (drives live site behavior)
+**localStorage Key:** `hfc-settings`  
+**Supabase Storage:** `public.settings` row where `key = 'site_settings'` (JSONB)  
+**Realtime:** `subscribeToSettingRealtime('site_settings', cb)` on homepage + admin settings page  
 
 ### Settings Schema
 
@@ -343,40 +377,59 @@ useBillsStore.getState().createBill(order)
 interface Settings {
   // License
   licenseKey: string
-  licenseStatus: 'active' | 'inactive' | 'trial'
-  
+  isLicensed: boolean
+  licensedDomain: string
+  licenseValidUntil: string
+
   // Branding
   siteName: string
-  tagline: string
+  logoBase64: string | null
   phone: string
-  whatsappNumber: string
-  email: string
-  address: string
-  logoUrl: string
-  
+  whatsappNumber: string      // With country code "919912799855"
+  kitchenAddress: string
+
   // GST
-  gstEnabled: boolean
-  gstPercentage: number
-  gstNumber: string
-  
+  gstMode: 'none' | 'inclusive' | 'exclusive'
+  gstPercent: number
+
   // Delivery & Payment
-  deliveryEnabled: boolean
-  deliveryCharge: number
-  freeDeliveryAbove: number
-  upiId: string
-  cashEnabled: boolean
-  upiEnabled: boolean
-  
-  // WhatsApp Auto-send
-  whatsappAutoSend: boolean
-  autoSendOnPlaced: boolean
-  autoSendOnAccepted: boolean
-  autoSendOnDelivered: boolean
-  
+  deliveryFee: number
+  freeDeliveryAbove: number   // 0 = never free
+  currencySymbol: string      // "₹"
+  upiId: string               // For QR code generation
+  acceptCash: boolean
+  acceptOnline: boolean
+
+  // WhatsApp Auto-send (optional, Meta Cloud API)
+  cloudApiToken: string
+  cloudApiPhoneId: string
+
   // Delivery Areas
   deliveryAreas: DeliveryArea[]
-  
+
   // Subscription Plans
   subscriptionPlans: SubscriptionPlan[]
 }
+```
+
+### Actions
+
+| Action | Supabase Sync | Live Effect on Website |
+|--------|--------------|----------------------|
+| `updateSettings(patch)` | `sync_setting('site_settings', {...})` | Delivery fee, UPI ID, GST update live |
+| `addDeliveryArea(name)` | `sync_setting('site_settings', {...})` | Customer dropdown updates live |
+| `toggleDeliveryArea(id)` | `sync_setting('site_settings', {...})` | |
+| `deleteDeliveryArea(id)` | `sync_setting('site_settings', {...})` | |
+| `addSubscriptionPlan(name, price)` | `sync_setting('site_settings', {...})` | |
+| `fetchAndSyncSettings()` | Fetch `site_settings` + `site_settings_private` | On mount |
+| `setSettingsFromSupabase(data)` | — | Called by realtime listener |
+
+### Sensitive Data Separation
+
+```typescript
+// Public settings (readable by anyone):
+syncSettingToSupabase('site_settings', publicSettings)
+
+// Private settings (API tokens — separate row):
+syncSettingToSupabase('site_settings_private', { cloudApiToken, cloudApiPhoneId })
 ```

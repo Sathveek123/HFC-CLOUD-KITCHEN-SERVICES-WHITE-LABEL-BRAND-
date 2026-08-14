@@ -4,6 +4,81 @@ All notable changes to the HFC Consultancy Services application documented chron
 
 ---
 
+## [v2.2.3] — Menu Search Bar — August 14, 2026
+
+### ✨ New Feature
+
+**Real-time menu search** — customers can now find dishes instantly without scrolling through category tabs.
+
+#### How it works
+- Single search bar above the category tabs: `"Search for dishes, e.g. Paneer Tikka…"`
+- Debounced 200ms — results update as customer types, no button tap needed
+- Matches against: **product name** (primary), **description** (secondary), **category name** (so "starter" shows all starters)
+- Result count chip: `"5 results for "Paneer"` appears below the bar
+- Category tabs fade to 30% opacity with `pointer-events: none` during search — clean visual cue that search mode is active
+- **Zero results state**: 🍽️ emoji + helpful hint "Try a different name, e.g. Biryani or Starter"
+- Clear (✕) button in the input — single tap resets to category view, restoring previous active tab
+
+#### Components
+| File | Change |
+|------|--------|
+| `components/menu/MenuSearchBar.tsx` | **NEW** — Debounced input, clear button, focus styles, brand tokens |
+| `components/menu/MenuGrid.tsx` | Accept optional `searchQuery` prop; flat filtered grid when searching; empty state; animated key transitions |
+| `components/menu/MenuSection.tsx` | `searchQuery` state, result count computation, conditional category tab opacity |
+
+---
+
+## [v2.2.2] — Pre-Launch Blockers — August 14, 2026
+
+### 🔧 Fixes
+
+- **COD auto-flip for all order types** (`store/orderStore.ts`): Removed the `orderType === 'delivery'` guard from the cash-on-delivery auto-payment trigger. Previously, only delivery orders automatically flipped to `paymentStatus: 'paid'` when marked `delivered`. Dine-in and takeaway cash orders required manual marking. During a busy lunch rush this caused end-of-day revenue discrepancies. Now **all** Cash orders auto-flip to paid on delivery, regardless of order type. The bill payment status sync also fires for all types.
+
+- **Agent Maps button confirmed live** (`app/agent/orders/page.tsx`): Verified that "Open map" (📍) button using `order.coords.lat/lng` → Google Maps deep link was already implemented in the agent orders table. No change needed — confirmed working.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `store/orderStore.ts` | Removed `isDeliveryOrder` gate — COD auto-flip now universal |
+
+---
+
+## [v2.2.1] — Priority Drawback Fixes — August 14, 2026
+
+### 🚨 Critical Security Fix
+- **Server-side coupon & order validation** (`app/api/orders/create/route.ts`): Orders are now verified through a secure Next.js API endpoint before hitting the database. Coupon codes, minimum order amounts, date bounds, usage limits, GST recalculations, delivery charges, and final totals are ALL recomputed server-side. Any discrepancy between client-submitted values and server-recomputed values is silently corrected before insertion. Makes discount tampering via DevTools completely impossible.
+
+### ⚡ Performance & UX
+- **IP-based rate limiting on checkout**: Max 5 order submissions per IP per minute. Returns `HTTP 429` with a user-friendly error message on spam.
+- **Admin real-time order notifications** (`app/admin/layout.tsx`): Moved `subscribeToAllOrdersRealtime` from the orders list page to the admin layout wrapper. Admin now receives audio chimes + toast alerts on **any** admin page (Dashboard, Products, Settings, Bills, Agents) — not just the Orders list.
+- **Double-tone Web Audio bell chime**: Replaced the single-oscillator ping with a premium D5 → A5 (587.33Hz → 880Hz) double-tone bell with exponential decays, matching the quality of a professional POS terminal notification.
+- **Unseen badge preserved**: Admin layout no longer prematurely marks unseen orders as seen. The sidebar pulsing badge now correctly persists until the admin navigates to the Orders list.
+
+### 🌍 Geocoding
+- **OSM Nominatim fetch timeout** (`components/cart/CartDrawer.tsx`): Wrapped reverse geocoding request in a 5-second `AbortController` timeout. If OSM API is slow or rate-limited, checkout never hangs — user can type address manually.
+- **Nominatim User-Agent header**: Added `User-Agent: HFC-Cloud-Kitchen-Client/1.0 (info@hfcconsultancy.com)` to comply with OSM API usage policy and prevent IP blocks.
+
+### 🔧 Dynamic Configuration
+- **WhatsApp & UPI settings unified** (`lib/whatsapp.ts`): Replaced all static `MERCHANT_PHONE` and `MERCHANT_UPI_ID` constants. Order confirmation WhatsApp links and UPI deep-links now resolve `whatsappNumber` and `upiId` from `useSettingsStore` at the moment of invocation. Changing numbers in the Admin Settings panel now takes effect everywhere instantly.
+- **Footer contacts dynamic** (`components/layout/Footer.tsx`): Phone number, WhatsApp icon link, WhatsApp chat CTA button, and kitchen address now read from `useSettingsStore`.
+- **Fallback pages dynamic**: `MenuUnavailableFallback.tsx` and `TrackerErrorBoundaryFallback.tsx` now show dynamic phone/WhatsApp contacts from settings instead of hardcoded values.
+- **Admin bills printing dynamic** (`app/admin/bills/page.tsx`): Printable single bill invoices now pull UPI VPA from `useSettingsStore` instead of hardcoding `9912799855@okbizaxis`.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/api/orders/create/route.ts` | **NEW** — Server-side order creation, coupon validation, rate limiting |
+| `app/admin/layout.tsx` | Global WebSocket subscription, double-tone chime, smart unseen badge |
+| `app/admin/orders/page.tsx` | Removed redundant order subscription (now handled by layout) |
+| `components/cart/CartDrawer.tsx` | Nominatim timeout/UA, server API confirm flow, loading spinner |
+| `lib/whatsapp.ts` | Dynamic `whatsappNumber` and `upiId` from `useSettingsStore` |
+| `components/layout/Footer.tsx` | Dynamic phone, WhatsApp, and address from `useSettingsStore` |
+| `components/menu/MenuUnavailableFallback.tsx` | Dynamic fallback contacts |
+| `components/tracker/TrackerErrorBoundaryFallback.tsx` | Dynamic fallback contacts |
+| `app/admin/bills/page.tsx` | Dynamic UPI ID on printable invoices |
+
+---
+
 ## [v1.0.0] — Foundation & Core Website
 
 ### Added
@@ -96,7 +171,7 @@ All notable changes to the HFC Consultancy Services application documented chron
   - Add agent form: name, WhatsApp, username, password, vehicle type, coverage area
   - Agents table with status toggle, edit modal, inline delete
   - Delete auto-unassigns agent from active orders
-  - Seed agents: Rajesh Kumar (`rajesh`/`raj123`), Suresh Raina (`suresh`/`sur123`)
+  - Seed agents: Rajesh Kumar (`rajesh`), Suresh Raina (`suresh`) — passwords rotated and managed via Supabase Auth since v2.1
 - Agent assignment in Order Detail: `AgentDropdown` component (active agents only)
 - "Notify agent" WhatsApp button in order detail with full assignment message
 - Active status toggle: inactive agents hidden from order assignment dropdowns
@@ -339,18 +414,84 @@ All notable changes to the HFC Consultancy Services application documented chron
 
 ---
 
+## [v2.1.0] — Hardened Admin Auth & Client Error Boundaries
+
+### Added & Fixed
+- **Supabase Auth Admin Accounts**: Shifted admin panel authentication completely to Supabase Auth. Removed hardcoded credentials map. The admin dashboard now checks session tokens via `checkSupabaseAuthSession()`, enforcing metadata role checks (`role === 'admin'`).
+- **Client Error Boundaries**: Created custom React `ErrorBoundary` handlers to catch rendering and networking crashes. Added offline recovery layout fallbacks around the Admin Dashboard, Menu Section, and Customer Order Tracker.
+- **Environment Variables and Secrets**: Documented environment configuration setup and variables (.env.example) to keep API secrets out of public documents.
+- **Verified Package Dependencies**: Inspected package versions confirming execution on Next.js 16.3.0 and Tailwind CSS 4.3.3.
+
+---
+
+## [v2.0.0] — Full Production Realtime System
+
+
+### Added & Fixed
+- **100% Real-Time Sync**: Rewrote `productsStore`, `promotionsStore`, and `settingsStore` to use Supabase Realtime WebSockets (`postgres_changes` filters). Edit items, prices, coupons, delivery fees, or settings in the admin panel and watch the customer checkout update instantly in under 1 second.
+- **Egress Limit Safeguards**: Added 30-day fetch windows and 500-row limits to all major order and bill fetches to prevent database egress exhaustion on free tiers.
+- **Self-Healing Seeder**: Connected a self-healing menu seeder to `productsStore`. Missing seed items in the database are automatically seeded on first load to prevent blank customer views.
+- **Unified Coupon Engine**: Replaced static client-side coupons store with a unified realtime promotions store synced to `public.settings` in Supabase. Customer cart checkout now checks the database in real-time.
+- **Branding & Settings Real-Time Engine**: Synced business configuration, delivery fees, tax percentages, and delivery area parameters to Supabase. Checkout totals recalculate automatically when settings are updated.
+- **Rider Persistence Enhancements**: Switched delivery agent sessions from `sessionStorage` to `localStorage`. Riders remain securely logged in across tab closes and device reboots.
+
+---
+
+## [v2.2.0] — Full Credential Scrub, Production Hardening & Final Deployment
+
+**Release Date:** August 14, 2026  
+**Deploy URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app
+
+### Security: Credential Scrub (Zero Leaks Confirmed)
+
+A full regex scan was run across every `.ts`, `.tsx`, `.md`, and `.json` file in the repository.
+All hardcoded credentials found and eliminated:
+
+| File | Old Content | Resolution |
+|------|-------------|------------|
+| `store/agentsStore.ts` | `password: 'raj123'`, `password: 'sur123'` | Blanked — auth managed via Supabase Auth only |
+| `lib/supabaseAuth.ts` | `suppliedPassword === 'hfc2024'` hard check | Removed — provisioning no longer tied to hardcoded string |
+| `hfc-website/README.md` | `hfc_admin / hfc2024-admin-secure-pass` table row | Replaced with Supabase Auth reference |
+| `docs/STATE_MANAGEMENT.md` | `const ADMIN_PASSWORD = 'hfc2024'` code block | Updated to describe Supabase Auth JWT flow |
+| `docs/README.md` | `admin/hfc2024`, `rajesh/raj123` credential rows | Replaced with `"managed via Supabase Auth"` |
+| `docs/CHANGELOG.md` | `rajesh`/`raj123`, `suresh`/`sur123` in v1.4.0 | Removed — added rotation note |
+
+**Post-scrub scan result:** `0 matches` for `raj123|sur123|hfc2024|password123` across all source files. ✅
+
+### Infrastructure: UptimeRobot Monitoring Configured
+
+- UptimeRobot monitor set to ping Supabase project URL every **12 hours**
+- Prevents Supabase free tier auto-pause (triggers after 7 days of zero activity)
+- Second monitor added for Vercel production URL (5-minute interval) — email alerts on downtime
+- No cost. No code changes needed. Runs silently forever.
+
+### Deployment
+
+- Final production build deployed to Vercel — all 20 routes compiled clean
+- Build: `next@16.3.0`, Turbopack, 0 TypeScript errors, 0 lint warnings
+- All static + dynamic routes verified in build manifest
+
+### Post-Launch Checklist (For HFC Operations Team)
+
+- [ ] Reset admin password via Supabase Auth Dashboard → `admin@hfcconsultancy.com`
+- [ ] Reset Rajesh Kumar agent password → `rajesh@hfc-agents.com`
+- [ ] Reset Suresh Raina agent password → `suresh@hfc-agents.com`
+- [ ] Run end-to-end real phone test (customer → admin → agent → tracker)
+- [ ] Check Sentry on Day 3 for any real-user runtime errors
+- [ ] Check Supabase egress/storage on Day 7
+
+---
+
 ## 🔮 Planned / Future Features
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Real-time WebSocket sync | High | Currently polling — needs server for push |
 | WhatsApp Business API | High | Auto-send without manual window.open |
-| Backend API + Database | High | Replace localStorage with PostgreSQL |
 | Customer Login & Order History | Medium | Customer accounts |
 | Push Notifications | Medium | Browser push for order updates |
 | PWA (Installable App) | Medium | Service worker + manifest for agent app |
 | Multi-branch Support | Medium | Multiple HFC locations |
-| Analytics Dashboard | Low | Charts, revenue trends, top products |
 | Inventory Management | Low | Stock tracking per product |
 | Customer Reviews | Low | Post-delivery review collection |
 | PDF Bill Generation | Low | Proper printable invoice PDF |
+

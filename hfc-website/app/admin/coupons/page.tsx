@@ -5,6 +5,8 @@ import { Copy, Check, AlertTriangle, Trophy, Tag, Gift } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePromotionsStore, RewardTier, Coupon, Offer } from '@/store/promotionsStore'
 import { useProductsStore } from '@/store/productsStore'
+import { subscribeToSettingRealtime } from '@/lib/supabaseSync'
+
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -764,6 +766,23 @@ function OffersSection() {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function AdminCouponsPage() {
+  const fetchAndSyncPromotions = usePromotionsStore(state => state.fetchAndSyncPromotions)
+  const setPromotionsFromSupabase = usePromotionsStore(state => state.setPromotionsFromSupabase)
+
+  useEffect(() => {
+    // 1. Initial fetch from Supabase on mount
+    fetchAndSyncPromotions()
+
+    // 2. Realtime listener: updates local store whenever another device edits promotions
+    const unsubscribe = subscribeToSettingRealtime('promotions', (updatedValue) => {
+      if (updatedValue) {
+        setPromotionsFromSupabase(updatedValue)
+      }
+    })
+
+    return () => unsubscribe()
+  }, [fetchAndSyncPromotions, setPromotionsFromSupabase])
+
   return (
     <div className="flex flex-col gap-8 p-6 md:p-8 bg-[#FAFAFA] min-h-full">
       {/* Page Header */}
@@ -783,3 +802,4 @@ export default function AdminCouponsPage() {
     </div>
   )
 }
+

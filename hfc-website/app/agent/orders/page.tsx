@@ -5,8 +5,9 @@ import { format } from 'date-fns'
 import { MapPin, Bike, PackageCheck, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAgentAuthStore } from '@/store/agentAuthStore'
+import { useAgentsStore } from '@/store/agentsStore'
 import { useOrderStore, OrderRecord } from '@/store/orderStore'
-import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase } from '@/lib/supabaseSync'
+import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase, fetchAgentsFromSupabase } from '@/lib/supabaseSync'
 import AdminBadge from '@/components/admin/shared/AdminBadge'
 
 export default function AgentOrdersPage() {
@@ -18,6 +19,7 @@ export default function AgentOrdersPage() {
   const updatePaymentStatus = useOrderStore(state => state.updatePaymentStatus)
   const upsertOrders = useOrderStore(state => state.upsertOrders)
   const upsertOrder = useOrderStore(state => state.upsertOrder)
+  const upsertAgents = useAgentsStore(state => state.upsertAgents)
 
   // Realtime Supabase sync — runs ONCE on mount only
   React.useEffect(() => {
@@ -25,12 +27,18 @@ export default function AgentOrdersPage() {
       upsertOrders(fetched)
     })
 
+    fetchAgentsFromSupabase().then(fetched => {
+      if (fetched && fetched.length > 0) {
+        upsertAgents(fetched)
+      }
+    })
+
     const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
       upsertOrder(updatedOrder)
     })
 
     return () => unsubscribe()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [upsertOrders, upsertOrder, upsertAgents])
 
 
   // Status Filter Tabs

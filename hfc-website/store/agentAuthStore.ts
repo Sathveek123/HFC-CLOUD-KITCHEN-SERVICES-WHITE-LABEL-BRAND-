@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useAgentsStore, Agent } from './agentsStore'
 import { authenticateAgentSupabase, checkSupabaseAuthSession } from '@/lib/supabaseAuth'
+import { fetchAgentsFromSupabase } from '@/lib/supabaseSync'
 
 interface AgentAuthStore {
   isAuthenticated: boolean
@@ -16,6 +17,16 @@ export const useAgentAuthStore = create<AgentAuthStore>((set, get) => ({
   loggedInAgentId: null,
 
   login: async (username: string, password: string) => {
+    // Sync latest delivery agents from Supabase first so new accounts can log in
+    try {
+      const fetched = await fetchAgentsFromSupabase()
+      if (fetched && fetched.length > 0) {
+        useAgentsStore.getState().upsertAgents(fetched)
+      }
+    } catch (e) {
+      console.warn('Failed to sync agents on login:', e)
+    }
+
     const agents = useAgentsStore.getState().agents
     const cleanUsername = username.trim().toLowerCase()
     const cleanPassword = password.trim()
@@ -38,8 +49,9 @@ export const useAgentAuthStore = create<AgentAuthStore>((set, get) => ({
     // Authenticate with Supabase Auth for RLS JWT token issuance
     await authenticateAgentSupabase(username, password)
 
+    // Save session to localStorage so agent stays logged in across tab close/refresh
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('hfc-agent-session', agent.id)
+      localStorage.setItem('hfc-agent-session', agent.id)
     }
 
     set({ isAuthenticated: true, loggedInAgentId: agent.id })
@@ -48,14 +60,14 @@ export const useAgentAuthStore = create<AgentAuthStore>((set, get) => ({
 
   logout: () => {
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('hfc-agent-session')
+      localStorage.removeItem('hfc-agent-session')
     }
     set({ isAuthenticated: false, loggedInAgentId: null })
   },
 
   checkSession: () => {
     if (typeof window !== 'undefined') {
-      const agentId = sessionStorage.getItem('hfc-agent-session')
+      const agentId = localStorage.getItem('hfc-agent-session')
       if (agentId) {
         const agent = useAgentsStore.getState().agents.find(a => a.id === agentId)
         if (agent && agent.isActive) {

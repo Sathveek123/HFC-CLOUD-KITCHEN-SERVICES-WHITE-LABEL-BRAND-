@@ -6,10 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, ArrowLeft, MapPin, MessageCircle, ShoppingBag } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useOrderStore, OrderRecord, OrderType, generateOrderId, sanitizeInput } from '@/store/orderStore'
-import { useCouponsStore } from '@/store/couponsStore'
+import { usePromotionsStore } from '@/store/promotionsStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { openWhatsAppLink } from '@/lib/whatsapp'
 import CartItem from './CartItem'
+import toast from 'react-hot-toast'
 
 export default function CartDrawer() {
   const router = useRouter()
@@ -22,8 +23,9 @@ export default function CartDrawer() {
 
   const addOrder = useOrderStore(state => state.addOrder)
 
-  const validateCoupon = useCouponsStore(state => state.validateCoupon)
-  const incrementUsedCount = useCouponsStore(state => state.incrementUsedCount)
+  const getValidCoupon = usePromotionsStore(state => state.getValidCoupon)
+  const incrementCouponUsage = usePromotionsStore(state => state.incrementCouponUsage)
+
 
   // Multi-step state: 'review' | 'checkout' | 'confirm'
   const [step, setStep] = useState<'review' | 'checkout' | 'confirm'>('review')
@@ -66,13 +68,24 @@ export default function CartDrawer() {
     setCouponError('')
     if (!couponCode.trim()) return
 
-    const result = validateCoupon(couponCode.trim(), subtotal, orderType)
-    if (result.isValid) {
-      const coupon = useCouponsStore.getState().coupons.find(
-        c => c.code.toUpperCase() === couponCode.trim().toUpperCase()
-      )
+    const result = getValidCoupon(couponCode.trim(), subtotal)
+    if (result.valid && result.coupon) {
+      const coupon = result.coupon
+      let calculatedDiscount = 0
+
+      if (coupon.discountType === 'percent') {
+        calculatedDiscount = Math.round(subtotal * ((coupon.discountValue || 0) / 100))
+        if (coupon.maxDiscountCap && calculatedDiscount > coupon.maxDiscountCap) {
+          calculatedDiscount = coupon.maxDiscountCap
+        }
+      } else if (coupon.discountType === 'flat') {
+        calculatedDiscount = coupon.discountValue || 0
+      } else if (coupon.discountType === 'free-delivery') {
+        calculatedDiscount = 0
+      }
+
       setAppliedCoupon(coupon)
-      setDiscountAmount(result.discountAmount)
+      setDiscountAmount(calculatedDiscount)
     } else {
       setCouponError(result.error || 'Invalid coupon code')
       setAppliedCoupon(null)
@@ -123,14 +136,21 @@ export default function CartDrawer() {
 
         // Attempt client-side reverse geocoding via OpenStreetMap Nominatim API
         try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout fallback
+
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
             {
+              signal: controller.signal,
               headers: {
                 'Accept-Language': 'en',
+                'User-Agent': 'HFC-Cloud-Kitchen-Client/1.0 (info@hfcconsultancy.com)'
               },
             }
           )
+          clearTimeout(timeoutId)
+
           if (res.ok) {
             const data = await res.json()
             if (data && data.display_name) {
@@ -138,8 +158,8 @@ export default function CartDrawer() {
               setErrors(prev => ({ ...prev, delivery: '' }))
             }
           }
-        } catch (e) {
-          console.error('Reverse geocoding failed:', e)
+        } catch (e: any) {
+          console.warn('OSM Nominatim geocoding failed or timed out:', e.message || e)
         }
       },
       () => {
@@ -176,7 +196,7 @@ export default function CartDrawer() {
 
   // Step 1: Build order + open WhatsApp — but DON'T save yet
   const handleOpenWhatsApp = () => {
-    if (!validateForm()) return
+    if (!validateForm() || isSubmitting) return
     setIsSubmitting(true)
 
     const orderId = generateOrderId() // collision-proof
@@ -217,20 +237,60 @@ export default function CartDrawer() {
   }
 
   // Step 2: User confirms they sent the WhatsApp message
-  const handleConfirmSent = () => {
-    if (!pendingOrder) return
+  const handleConfirmSent = async () => {
+    if (!pendingOrder || isSubmitting) return
+    setIsSubmitting(true)
 
-    // Now save to store
-    addOrder(pendingOrder)
+    let finalOrderToSave = pendingOrder
+    let hasServerSuccess = false
 
-    // Increment coupon used count
+    try {
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ order: pendingOrder }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.order) {
+          finalOrderToSave = data.order
+          hasServerSuccess = true
+        }
+      } else {
+        // Error response from server — LOG ONLY, never break the user flow.
+        // We still save the order locally (finalOrderToSave = pendingOrder) below.
+        try {
+          const errData = await res.json()
+          console.warn('Server order validation returned (swallowed):', errData?.error)
+        } catch (_) {}
+      }
+    } catch (err: any) {
+      // Network / fetch failure — LOG ONLY, never break flow.
+      console.warn('Order API network issue (swallowed):', err)
+    }
+
+    // Now save to store (ALWAYS HAPPENS — NO RETURN / EXIT ABOVE)
+    addOrder(finalOrderToSave)
+
+    // Increment coupon used count (client optimistic sync)
     if (appliedCoupon) {
-      incrementUsedCount(appliedCoupon.code)
+      incrementCouponUsage(appliedCoupon.code)
     }
 
     // Clear cart + close + navigate to tracker
     clearCart()
-    const orderId = pendingOrder.id
+    const orderId = finalOrderToSave.id
+
+    // Only ONE toast ever shown: ALWAYS SUCCESS — redirect to tracker regardless.
+    toast.success(hasServerSuccess
+      ? 'Order confirmed! Redirecting to tracker...'
+      : 'Order saved locally! Redirecting to tracker...'
+    )
+
+    setIsSubmitting(false)
     handleClose()
     router.push(`/track/${orderId}`)
   }
@@ -590,13 +650,22 @@ export default function CartDrawer() {
                     </div>
                     <button
                       onClick={handleConfirmSent}
-                      className="w-full h-[52px] bg-[#166534] hover:bg-[#14532d] text-white font-brand font-bold text-[14px] uppercase tracking-[1px] rounded-btn transition-colors flex items-center justify-center gap-2"
+                      disabled={isSubmitting}
+                      className="w-full h-[52px] bg-[#166534] hover:bg-[#14532d] text-white font-brand font-bold text-[14px] uppercase tracking-[1px] rounded-btn transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      ✓ Yes, I sent the message
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Verifying Order...
+                        </>
+                      ) : (
+                        '✓ Yes, I sent the message'
+                      )}
                     </button>
                     <button
                       onClick={handleRetrySend}
-                      className="w-full h-[44px] border border-brand-border text-brand-body hover:border-brand-black hover:text-brand-black font-brand font-semibold text-[12px] uppercase tracking-[1px] rounded-btn transition-colors"
+                      disabled={isSubmitting}
+                      className="w-full h-[44px] border border-brand-border text-brand-body hover:border-brand-black hover:text-brand-black font-brand font-semibold text-[12px] uppercase tracking-[1px] rounded-btn transition-colors disabled:opacity-50"
                     >
                       ↩ No, open WhatsApp again
                     </button>
