@@ -377,23 +377,38 @@ export async function fetchAgentsFromSupabase(): Promise<any[]> {
 }
 
 /**
- * Fetch bills from Supabase — LIMITED to last 30 days to protect egress.
+ * Fetch bills from Supabase — SERVER-SIDE limited to last 30 days (DB-filtered)
+ * to protect egress. Old get_all_bills RPC pulled entire table then client-filtered,
+ * which meant years of bills shipped over the wire every time.
  */
 export async function fetchBillsFromSupabase(): Promise<any[]> {
   const since = new Date()
   since.setDate(since.getDate() - 30)
-  const sinceMs = since.getTime()
+  const sinceIso = since.toISOString()
 
   try {
-    const { data, error } = await supabase.rpc('get_all_bills')
-    if (error || !data) {
-      console.warn('Failed to fetch bills via RPC:', error?.message)
-      return []
+    // Path 1: direct REST with server-side .gte() filter — DB only returns 30 days
+    const { data, error } = await supabase
+      .from('bills')
+      .select('*')
+      .gte('date', sinceIso)
+      .order('date', { ascending: false })
+
+    if (!error && data) {
+      return data
     }
-    // Filter to last 30 days client-side on the RPC output
-    return (data as any[]).filter(
-      (bill: any) => new Date(bill.date).getTime() >= sinceMs
-    )
+
+    // Path 2 (fallback if REST blocked): RPC — filter on server first if possible,
+    // otherwise the full RPC output (rare)
+    console.warn('Bills REST filter failed — falling back to RPC:', error?.message)
+    const rpcRes = await supabase.rpc('get_all_bills')
+    if (!rpcRes.error && rpcRes.data) {
+      const sinceMs = since.getTime()
+      return (rpcRes.data as any[]).filter(
+        (bill: any) => new Date(bill.date).getTime() >= sinceMs
+      )
+    }
+    return []
   } catch (err) {
     console.warn('Failed to fetch bills from Supabase:', err)
     return []

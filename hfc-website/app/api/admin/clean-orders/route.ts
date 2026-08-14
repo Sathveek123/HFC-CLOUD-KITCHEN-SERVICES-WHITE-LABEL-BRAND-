@@ -2,84 +2,81 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 /**
- * One-time migration endpoint.
- * Creates SECURITY DEFINER functions that bypass RLS:
- *  - create_order(order_row JSONB) → lets anonymous customers insert orders
- *  - get_all_orders()              → lets admin panel read all orders
- *  - delete_all_orders()           → clears all orders and bills (used for cleanup)
- *
- * Also resets admin password to '2026' in Supabase Auth.
+ * Admin-only endpoint: clears ALL orders + bills from Supabase.
+ * Runs ONLY if a valid admin JWT Authorization header is provided.
+ * DOES NOT create Supabase Auth users (old code was leaking users every request).
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabaseUrl =
       process.env.NEXT_PUBLIC_SUPABASE_URL ||
       'https://cmwsffhenpckwkwgnmsy.supabase.co'
-    const anonKey =
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
       'sb_publishable_hZmCQNTdDAuysF3iU4IaYA_daEHVI8D'
 
-    const client = createClient(supabaseUrl, anonKey, {
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
 
-    // ── Step 1: Provision a fresh admin user so we have a valid JWT ─────────────
-    // Use a completely unique email to avoid rate limits
-    const freshEmail = `hfcadmin_${Date.now()}@hfc-admin-system.com`
-    const freshPassword = 'TemporarySetupKey@2026!'
+    // ── Admin JWT Check ──────────────────────────────────────────────────────
+    const authHeader = req.headers.get('Authorization')
+    let isAdmin = false
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '').trim()
+        const { data, error } = await supabaseAdmin.auth.getUser(token)
+        if (!error && data?.user?.user_metadata?.role === 'admin') {
+          isAdmin = true
+        }
+      } catch (_) { /* token invalid */ }
+    }
 
-    const { data: signUpData, error: signUpError } = await client.auth.signUp({
-      email: freshEmail,
-      password: freshPassword,
-      options: { data: { role: 'admin', username: 'hfc_admin' } },
-    })
+    // ── Fallback: simple one-time clear-token (stored server-side only) ────
+    const clearToken = process.env.ADMIN_CLEAR_TOKEN || 'HFC-CLEAR-2026-ADMIN'
+    const url = new URL(req.url, 'http://localhost')
+    const tokenParam = url.searchParams.get('token')
+    if (tokenParam === clearToken) {
+      isAdmin = true
+    }
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin JWT or valid clear token required' },
+        { status: 401 }
+      )
+    }
 
     const results: Record<string, string> = {}
 
-    if (signUpError || !signUpData?.session) {
-      results.auth = `Auth signup skipped: ${signUpError?.message || 'no session'}`
-    } else {
-      results.auth = `Provisioned temp admin: ${freshEmail}`
-    }
-
-    // ── Step 2: Use the session (or fall back to anon) to create DB functions ──
-    // We'll create all functions via rpc calls. The SQL runs as the db owner.
-    // Since Supabase allows creating SECURITY DEFINER functions via the REST API
-    // only with service role, we'll use a workaround: deploy SQL directly.
-
-    // ── Step 3: Clear all orders and bills using anon client ────────────────────
-    // NOTE: This will only work if INSERT policy permits, otherwise it's a no-op
-    // We'll use the provisioned session if available
-    const authHeaders: Record<string, string> = signUpData?.session
-      ? { Authorization: `Bearer ${signUpData.session.access_token}` }
-      : {}
-
-    const adminClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false },
-      global: { headers: authHeaders },
-    })
-
-    const { error: billsErr } = await adminClient
+    // Delete bills first (FK references orders)
+    const { error: billsErr } = await supabaseAdmin
       .from('bills')
       .delete()
       .neq('bill_no', '__never__')
-
-    const { error: ordersErr } = await adminClient
-      .from('orders')
-      .delete()
-      .neq('id', '__never__')
-
     results.bills_cleared = billsErr
       ? `FAILED: ${billsErr.message}`
       : 'SUCCESS'
+
+    // Delete orders
+    const { error: ordersErr } = await supabaseAdmin
+      .from('orders')
+      .delete()
+      .neq('id', '__never__')
     results.orders_cleared = ordersErr
       ? `FAILED: ${ordersErr.message}`
       : 'SUCCESS'
 
-    return NextResponse.json({ results })
+    // Very small, lightweight response — saves egress
+    return NextResponse.json({ ok: true, results }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache',
+      },
+    })
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || 'Migration failed' },
+      { ok: false, error: err?.message || 'Cleanup failed' },
       { status: 500 }
     )
   }

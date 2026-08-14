@@ -94,29 +94,22 @@ export const useAdminAuthStore = create<AdminAuthStore>((set) => ({
   isAuthenticated: false,
 
   login: async (username: string, pin: string) => {
-    console.log('[AdminAuth] Login attempt:', { user: username, passLen: pin.length })
-
     // ─── 1. SYNC LOCAL CHECK FIRST — NO ASYNC, NO NETWORK, GUARANTEED TO RUN ──
     if (isDefaultCredentials(username, pin)) {
-      console.log('[AdminAuth] Default credentials matched — AUTH SUCCESS (local bypass)')
       writeLocalAuth(true)
       set({ isAuthenticated: true })
-      // Fire Supabase auth in background but DON'T await it
       authenticateAdminSupabase(username, pin).catch(() => {})
       return true
     }
 
     // ─── 2. ONLY NOW TRY SUPABASE FOR NON-DEFAULT ACCOUNTS ───────────────────
-    console.log('[AdminAuth] Not default creds — trying Supabase Auth...')
     const supabaseOk = await authenticateAdminSupabase(username, pin)
     if (supabaseOk) {
-      console.log('[AdminAuth] Supabase Auth succeeded')
       writeLocalAuth(true)
       set({ isAuthenticated: true })
       return true
     }
 
-    console.log('[AdminAuth] Login FAILED — all auth methods rejected')
     return false
   },
 
